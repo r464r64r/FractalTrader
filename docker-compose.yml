@@ -1,0 +1,40 @@
+# Fractal Trader Development Stack
+# Tested on Docker Desktop 4.15+ (macOS Catalina compatible)
+
+version: "3.8"
+
+services:
+  # Main development environment
+  fractal-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fractal-trader-dev
+    volumes:
+      - .:/app
+      - fractal-cache:/root/.cache
+    ports:
+      - "8888:8888"  # Jupyter (optional)
+      - "8080:8080"  # Freqtrade API (future)
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    stdin_open: true
+    tty: true
+    command: bash
+
+  # Lightweight test runner (for CI/quick tests)
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fractal-test
+    volumes:
+      - .:/app:ro  # Read-only for safety
+    command: python -m pytest tests/ -v --tb=short
+    profiles:
+      - test  # Only runs with: docker compose --profile test up
+
+volumes:
+  fractal-cache:
+    name: fractal-trader-cache
