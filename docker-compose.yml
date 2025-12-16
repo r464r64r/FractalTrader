@@ -16,12 +16,29 @@ services:
     ports:
       - "8888:8888"  # Jupyter (optional)
       - "8080:8080"  # Freqtrade API (future)
+      - "3000:3000"  # MCP Server
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     stdin_open: true
     tty: true
     command: bash
+
+  # MCP Server (for Claude Code integration)
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fractal-mcp
+    volumes:
+      - .:/app:ro  # Read-only for safety
+    environment:
+      - PYTHONUNBUFFERED=1
+      - USE_DOCKER=true
+      - DOCKER_CONTAINER_NAME=fractal-trader-dev
+    command: python -m mcp.server
+    profiles:
+      - mcp  # Only runs with: docker compose --profile mcp up
 
   # Lightweight test runner (for CI/quick tests)
   test-runner:
