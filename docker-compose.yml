@@ -36,7 +36,7 @@ services:
       - PYTHONUNBUFFERED=1
       - USE_DOCKER=true
       - DOCKER_CONTAINER_NAME=fractal-trader-dev
-    command: python -m mcp.server
+    command: python -m fractal_mcp.server
     profiles:
       - mcp  # Only runs with: docker compose --profile mcp up
 

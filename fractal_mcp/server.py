@@ -13,10 +13,10 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-from mcp.config import SERVER_NAME, SERVER_VERSION, AVAILABLE_STRATEGIES
-from mcp.tools.test_runner import run_tests
-from mcp.tools.backtest import run_backtest
-from mcp.tools.signals import generate_signals
+from fractal_mcp.config import SERVER_NAME, SERVER_VERSION, AVAILABLE_STRATEGIES
+from fractal_mcp.tools.test_runner import run_tests
+from fractal_mcp.tools.backtest import run_backtest
+from fractal_mcp.tools.signals import generate_signals
 
 # Setup logging
 logging.basicConfig(
@@ -199,7 +199,7 @@ if __name__ == "__main__":
 #     "mcpServers": {
 #       "fractal-trader": {
 #         "command": "python",
-#         "args": ["-m", "mcp.server"],
+#         "args": ["-m", "fractal_mcp.server"],
 #         "cwd": "/path/to/FractalTrader"
 #       }
 #     }

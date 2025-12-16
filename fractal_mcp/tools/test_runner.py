@@ -7,7 +7,7 @@ Executes pytest tests and returns formatted results.
 import subprocess
 from typing import Any
 
-from mcp.config import DEFAULT_TEST_PATH, USE_DOCKER, DOCKER_CONTAINER_NAME
+from fractal_mcp.config import DEFAULT_TEST_PATH, USE_DOCKER, DOCKER_CONTAINER_NAME
 
 
 def run_tests(test_path: str = DEFAULT_TEST_PATH) -> dict[str, Any]:

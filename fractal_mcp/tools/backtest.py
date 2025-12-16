@@ -7,7 +7,7 @@ Executes backtests for FractalTrader strategies.
 import subprocess
 from typing import Any
 
-from mcp.config import (
+from fractal_mcp.config import (
     DEFAULT_BACKTEST_BARS,
     AVAILABLE_STRATEGIES,
     USE_DOCKER,

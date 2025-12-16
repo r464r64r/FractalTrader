@@ -41,7 +41,7 @@ If not running, start it:
 
 Run the MCP server directly:
 ```bash
-python -m mcp.server
+python -m fractal_mcp.server
 ```
 
 The server uses stdio transport for communication with Claude Code.
@@ -166,7 +166,7 @@ By default, the MCP server executes commands inside the `fractal-dev` Docker con
 
 ```bash
 export USE_DOCKER=false
-python -m mcp.server
+python -m fractal_mcp.server
 ```
 
 ## Architecture
