@@ -46,5 +46,7 @@ docker-compose*.yml
 .dockerignore
 
 # Docs
-*.md
 !README.md
+
+# Claude's settings
+/.claude
