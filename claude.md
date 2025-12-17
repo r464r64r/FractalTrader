@@ -1,136 +1,106 @@
-# Fractal Trader — Claude Code Project Context
+# Fractal Trader — Claude Code Instructions
 
 ## Project Overview
 
 **Fractal Trader** is an algorithmic trading system based on **Smart Money Concepts (SMC)** — detecting institutional order flow patterns for cryptocurrency trading.
 
-**Philosophy:** Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and order blocks — the footprints of smart money.
+**Status:** Core implementation complete, test suite complete, awaiting live trading integration.
 
-## Technology Stack
+---
 
-| Component | Technology |
-|-----------|------------|
-| Language | Python 3.11+ |
-| Backtesting | vectorbt |
-| Live Trading | Freqtrade (planned) |
-| Data | CCXT + pandas |
-| Testing | pytest |
+## Essential Knowledge
 
-## Project Structure
+### Project Structure
 
 ```
 fractal-trader/
-├── core/                 # Core detection algorithms (SMC patterns)
-│   ├── market_structure.py   # Swing points, BOS, CHoCH, trend
-│   ├── liquidity.py          # Equal levels, liquidity sweeps
-│   ├── imbalance.py          # Fair Value Gaps (FVG)
-│   └── order_blocks.py       # Order Block detection
-│
+├── core/                 # SMC detection algorithms (DO NOT MODIFY without tests)
 ├── strategies/           # Trading strategies
-│   ├── base.py              # BaseStrategy ABC + Signal dataclass
-│   ├── liquidity_sweep.py   # Reversal after stop hunts
-│   ├── fvg_fill.py          # Trade FVG fills
-│   └── bos_orderblock.py    # Trend following with OB entries
-│
-├── risk/                 # Risk management
-│   ├── confidence.py        # Entry scoring (0-100)
-│   └── position_sizing.py   # Dynamic position sizing
-│
-├── backtesting/          # Research & testing
-│   └── runner.py            # vectorbt integration
-│
-├── fractal_mcp/          # MCP Server for Claude Code ✅
-│   ├── server.py            # Main server (stdio transport)
-│   └── tools/               # run_tests, run_backtest, generate_signals
-│
-├── tests/                # Test suite
-│   ├── test_market_structure.py  # 21 tests ✅
-│   ├── test_liquidity.py         # 16 tests ✅
-│   └── TODO_TESTS.md             # 116 tests documented
-│
-└── live/                 # Production (planned)
-    └── freqtrade_strategy.py
+├── risk/                 # Risk management (confidence + position sizing)
+├── backtesting/          # vectorbt integration (Docker only)
+├── fractal_mcp/          # MCP server for Claude Code
+├── tests/                # 134 tests, 76% coverage
+├── live/                 # Freqtrade integration (TODO)
+└── data/                 # Data fetching (TODO)
 ```
 
-## Code Conventions
+### Key Files
 
-### Type Hints Required
-```python
-def find_swing_points(
-    high: pd.Series,
-    low: pd.Series,
-    n: int = 5
-) -> tuple[pd.Series, pd.Series]:
-```
+| File | Purpose | Read First |
+|------|---------|------------|
+| `DEVELOPMENT.md` | Project status, MVP roadmap | Yes |
+| `strategies/base.py` | Signal dataclass, BaseStrategy ABC | Yes |
+| `risk/position_sizing.py` | Position sizing logic | If modifying risk |
+| `tests/TODO_TESTS.md` | Test checklist (all complete) | If adding tests |
+| `fractal-trader-context.md` | Full SMC specification | For deep context |
 
-### Docstrings Required
-```python
-def detect_liquidity_sweep(...) -> pd.Series:
-    """
-    Detect liquidity sweeps (stop hunts).
-
-    A sweep occurs when:
-    1. Price exceeds liquidity level
-    2. Price reverses within reversal_bars
-    3. Close returns inside the level
-
-    Args:
-        high: High prices
-        low: Low prices
-        ...
-
-    Returns:
-        Boolean series marking sweep completion bars
-    """
-```
-
-### Test Requirements Format
-Each module ends with:
-```python
-# =============================================================================
-# TEST REQUIREMENTS
-# =============================================================================
-# [ ] test_function_does_x
-# [ ] test_edge_case_y
-# =============================================================================
-```
-
-## Key Domain Concepts (SMC)
+### Domain Concepts (SMC)
 
 | Term | Definition |
 |------|------------|
-| **Swing High** | Bar where high > N bars on both sides |
-| **Swing Low** | Bar where low < N bars on both sides |
-| **BOS** | Break of Structure — trend continuation signal |
-| **CHoCH** | Change of Character — trend reversal signal |
-| **EQH/EQL** | Equal Highs/Lows — liquidity pools |
-| **FVG** | Fair Value Gap — 3-candle imbalance pattern |
-| **OB** | Order Block — last opposite candle before impulse |
+| **Swing High/Low** | Local extremes (high/low > N bars on both sides) |
+| **BOS** | Break of Structure — trend continuation |
+| **CHoCH** | Change of Character — trend reversal |
+| **FVG** | Fair Value Gap — 3-candle imbalance |
+| **Order Block** | Last opposite candle before impulse |
 | **Sweep** | Price breaks level then reverses (stop hunt) |
 
-## Current Status
+---
 
-- ✅ Core detection: 4/4 modules complete
-- ✅ Strategies: 3/3 strategies complete
-- ✅ Risk management: 2/2 modules complete
-- ✅ Backtesting: vectorbt integrated
-- ✅ MCP Server: Claude Code integration ready
-- ✅ Docker: Development environment ready
-- ✅ Tests: 37 passing, 116 documented
-- 🔧 Live trading: Not started
+## Development Environment
 
-## MCP Server (Claude Code Integration)
+### Docker (Recommended)
 
-The MCP server allows Claude Code to interact with FractalTrader:
+```bash
+# Start interactive shell with all dependencies
+./docker-start.sh
 
-**Tools available:**
-- `run_tests` — Execute pytest suite
-- `run_backtest` — Run strategy backtests
-- `generate_signals` — Generate trading signals
+# Run tests
+./docker-start.sh test
 
-**Start server:** `python -m fractal_mcp.server`
+# Run backtest example
+./docker-start.sh backtest
+```
 
-**Configure Claude Code** (`claude_desktop_config.json`):
+**Why Docker?**
+- vectorbt requires numba/LLVM (complex to install)
+- Backtesting tests only work in Docker
+- Consistent environment
+
+### Without Docker
+
+```bash
+# Install (no vectorbt)
+pip install pandas numpy scipy pytest
+
+# Run tests (skips backtesting)
+python -m pytest tests/ -v --ignore=tests/test_backtesting.py
+```
+
+---
+
+## MCP Server
+
+The project includes an MCP server for Claude Code integration.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `run_tests` | Execute pytest suite |
+| `run_backtest` | Run strategy backtest |
+| `generate_signals` | Generate trading signals from data |
+
+### Starting the Server
+
+```bash
+python -m fractal_mcp.server
+```
+
+### Claude Desktop Configuration
+
+Add to `claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -143,36 +113,148 @@ The MCP server allows Claude Code to interact with FractalTrader:
 }
 ```
 
-## Running the Project
+---
 
-```bash
-# Docker (recommended)
-./docker-start.sh          # Interactive shell
-./docker-start.sh test     # Run tests
-./docker-start.sh backtest # Example backtest
+## Code Conventions
 
-# Or with Python directly
-python -m pytest tests/ -v
+### Type Hints (Required)
+
+```python
+def find_swing_points(
+    high: pd.Series,
+    low: pd.Series,
+    n: int = 5
+) -> tuple[pd.Series, pd.Series]:
 ```
 
-## Key Files to Understand
+### Docstrings (Required)
 
-1. `core/market_structure.py` — Foundation (swing points, trend)
-2. `strategies/base.py` — Signal dataclass, BaseStrategy ABC
-3. `risk/position_sizing.py` — How position sizes are calculated
-4. `backtesting/runner.py` — How backtests work
-5. `tests/TODO_TESTS.md` — What tests need implementation
+```python
+def detect_liquidity_sweep(...) -> pd.Series:
+    """
+    Detect liquidity sweeps (stop hunts).
 
-## Development Guidelines
+    A sweep occurs when:
+    1. Price exceeds liquidity level
+    2. Price reverses within reversal_bars
+    3. Close returns inside the level
 
-1. **Never skip input validation** — Trading code must handle edge cases
-2. **Document changes** — Use `# Modified from DEVELOPMENT.md: [reason]`
-3. **Test requirements** — Add TEST REQUIREMENTS section to new modules
-4. **Type hints everywhere** — No exceptions
-5. **Keep functions pure** — No hidden state, clear inputs/outputs
+    Args:
+        high: High prices
+        ...
 
-## Contact / Attribution
+    Returns:
+        Boolean series marking sweep completion bars
+    """
+```
 
-- **Opus** (Claude Opus 4): Foundation architecture, core detection, base strategy
-- **Sonnet** (Claude Sonnet): Risk management, backtesting, additional strategies
-- **Context**: See `fractal-trader-context.md` for full specification
+### Test Requirements
+
+New modules should include TEST REQUIREMENTS section:
+
+```python
+# =============================================================================
+# TEST REQUIREMENTS
+# =============================================================================
+# [ ] test_function_does_x
+# [ ] test_edge_case_y
+# =============================================================================
+```
+
+---
+
+## Best Practices
+
+### DO
+
+1. **Run tests before commits** — `python -m pytest tests/ -v`
+2. **Use type hints everywhere** — No exceptions
+3. **Handle edge cases** — Trading code must be robust
+4. **Keep functions pure** — Clear inputs/outputs, no hidden state
+5. **Document changes** — Update DEVELOPMENT.md for significant work
+6. **Use Docker for backtesting** — vectorbt only works there
+
+### DON'T
+
+1. **Modify core/ without tests** — These are foundation modules
+2. **Skip input validation** — Trading errors are costly
+3. **Use global state** — All state should be explicit
+4. **Ignore test failures** — Fix before proceeding
+5. **Force push to main** — Use feature branches
+
+---
+
+## Git Workflow
+
+### Branch Strategy
+
+```
+main                    # Stable, tested code
+├── implement-*         # Feature implementation
+├── fix-*               # Bug fixes
+└── claude/*            # Claude Code sessions
+```
+
+### Commit Messages
+
+```
+Add FVG detection tests (17 tests)
+Fix position sizing edge case for zero ATR
+Update DEVELOPMENT.md with sprint 5 status
+```
+
+---
+
+## Current TODO (MVP)
+
+| Priority | Task | Notes |
+|----------|------|-------|
+| 1 | `data/fetcher.py` | Implement CCXT data fetching |
+| 2 | `live/freqtrade_strategy.py` | Complete Freqtrade wrapper |
+| 3 | `risk/portfolio.py` | Portfolio-level risk controls |
+| 4 | Integration test | End-to-end backtest validation |
+
+See `DEVELOPMENT.md` for full roadmap.
+
+---
+
+## Testing
+
+```bash
+# Full suite (Docker)
+./docker-start.sh test
+
+# Without Docker
+python -m pytest tests/ -v --ignore=tests/test_backtesting.py
+
+# Specific file
+python -m pytest tests/test_risk.py -v
+
+# With coverage
+python -m pytest tests/ --cov=core --cov=risk --cov=strategies
+```
+
+**Current status:** 134 tests, 100% passing, 76% coverage
+
+---
+
+## Troubleshooting
+
+### "ModuleNotFoundError: vectorbt"
+Use Docker: `./docker-start.sh`
+
+### Tests fail with import errors
+Install dependencies: `pip install pandas numpy scipy pytest`
+
+### MCP server won't start
+Check Python path and `fractal_mcp/__init__.py` exists
+
+---
+
+## Attribution
+
+| Model | Contributions |
+|-------|---------------|
+| **Opus** | Architecture, core detection, base strategy |
+| **Sonnet** | Risk management, backtesting, strategies, tests |
+| **Opus** | Review, documentation, merge coordination |
