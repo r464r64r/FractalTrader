@@ -39,6 +39,10 @@ fractal-trader/
 ├── backtesting/          # Research & testing
 │   └── runner.py            # vectorbt integration
 │
+├── fractal_mcp/          # MCP Server for Claude Code ✅
+│   ├── server.py            # Main server (stdio transport)
+│   └── tools/               # run_tests, run_backtest, generate_signals
+│
 ├── tests/                # Test suite
 │   ├── test_market_structure.py  # 21 tests ✅
 │   ├── test_liquidity.py         # 16 tests ✅
@@ -110,8 +114,34 @@ Each module ends with:
 - ✅ Strategies: 3/3 strategies complete
 - ✅ Risk management: 2/2 modules complete
 - ✅ Backtesting: vectorbt integrated
+- ✅ MCP Server: Claude Code integration ready
+- ✅ Docker: Development environment ready
 - ✅ Tests: 37 passing, 116 documented
 - 🔧 Live trading: Not started
+
+## MCP Server (Claude Code Integration)
+
+The MCP server allows Claude Code to interact with FractalTrader:
+
+**Tools available:**
+- `run_tests` — Execute pytest suite
+- `run_backtest` — Run strategy backtests
+- `generate_signals` — Generate trading signals
+
+**Start server:** `python -m fractal_mcp.server`
+
+**Configure Claude Code** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "fractal-trader": {
+      "command": "python",
+      "args": ["-m", "fractal_mcp.server"],
+      "cwd": "/path/to/FractalTrader"
+    }
+  }
+}
+```
 
 ## Running the Project
 
