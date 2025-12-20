@@ -1,0 +1,327 @@
+"""Hyperliquid testnet paper trading."""
+
+import logging
+import time
+from typing import Optional, Dict, List
+from datetime import datetime
+
+from eth_account import Account
+from hyperliquid.info import Info
+from hyperliquid.exchange import Exchange
+from hyperliquid.utils import constants
+
+from data.hyperliquid_fetcher import HyperliquidFetcher
+from strategies.base import BaseStrategy, Signal
+from risk.position_sizing import calculate_position_size, RiskParameters
+from live.hyperliquid.config import HyperliquidConfig
+
+
+logger = logging.getLogger(__name__)
+
+
+class HyperliquidTestnetTrader:
+    """
+    Paper trading on Hyperliquid testnet.
+
+    Features:
+    - Uses fake money (zero risk)
+    - Real market data
+    - Full order placement testing
+    - Performance tracking
+
+    Testnet URL: https://app.hyperliquid-testnet.xyz
+    """
+
+    def __init__(
+        self,
+        config: HyperliquidConfig,
+        strategy: BaseStrategy
+    ):
+        """
+        Initialize testnet trader.
+
+        Args:
+            config: HyperliquidConfig with network='testnet'
+            strategy: Strategy instance to trade
+
+        Raises:
+            ValueError: If config.network != 'testnet'
+        """
+        if config.network != 'testnet':
+            raise ValueError("TestnetTrader requires network='testnet'")
+
+        config.validate()
+
+        self.config = config
+        self.strategy = strategy
+
+        # Setup wallet
+        self.wallet = Account.from_key(config.private_key)
+        logger.info(f"Wallet address: {self.wallet.address}")
+
+        # Initialize Hyperliquid clients
+        self.info = Info(constants.TESTNET_API_URL, skip_ws=True)
+        self.exchange = Exchange(self.wallet, constants.TESTNET_API_URL)
+
+        # Initialize data fetcher
+        self.fetcher = HyperliquidFetcher(network='testnet')
+
+        # Risk parameters
+        self.risk_params = RiskParameters(
+            base_risk_percent=config.base_risk_percent,
+            max_position_percent=config.max_position_percent,
+            min_confidence=config.min_confidence
+        )
+
+        # State tracking
+        self.open_positions: Dict = {}  # symbol -> position info
+        self.trade_history: List[Dict] = []
+        self.is_running = False
+
+        logger.info("TestnetTrader initialized")
+
+    def run(self, duration_seconds: Optional[int] = None):
+        """
+        Run trading loop.
+
+        Args:
+            duration_seconds: How long to run (None = indefinite)
+
+        Example:
+            >>> trader = TestnetTrader(config, strategy)
+            >>> trader.run(duration_seconds=3600)  # Run for 1 hour
+        """
+        self.is_running = True
+        start_time = time.time()
+
+        logger.info("Starting testnet trading loop")
+        logger.info(f"Strategy: {self.strategy.name}")
+        logger.info(f"Symbol: {self.config.default_symbol}")
+        logger.info(f"Timeframe: {self.config.default_timeframe}")
+
+        try:
+            while self.is_running:
+                # Check if duration exceeded
+                if duration_seconds:
+                    elapsed = time.time() - start_time
+                    if elapsed > duration_seconds:
+                        logger.info("Duration exceeded, stopping")
+                        break
+
+                # Main trading loop
+                self._trading_iteration()
+
+                # Sleep until next check
+                time.sleep(self.config.check_interval_seconds)
+
+        except KeyboardInterrupt:
+            logger.info("Interrupted by user")
+        except Exception as e:
+            logger.error(f"Trading loop error: {e}", exc_info=True)
+        finally:
+            self.stop()
+
+    def _trading_iteration(self):
+        """Single iteration of trading loop."""
+        try:
+            # 1. Fetch latest data
+            data = self.fetcher.fetch_ohlcv(
+                self.config.default_symbol,
+                self.config.default_timeframe,
+                limit=500  # Enough for strategy calculations
+            )
+
+            # 2. Generate signals
+            signals = self.strategy.generate_signals(data)
+
+            if not signals:
+                logger.debug("No signals generated")
+                return
+
+            # 3. Process latest signal
+            latest_signal = signals[-1]
+
+            # Check minimum confidence
+            if latest_signal.confidence < self.config.min_confidence:
+                logger.info(
+                    f"Signal confidence {latest_signal.confidence} < "
+                    f"min_confidence {self.config.min_confidence}, skipping"
+                )
+                return
+
+            logger.info(
+                f"Signal: {latest_signal.direction} @ "
+                f"{latest_signal.entry_price:.2f}"
+            )
+
+            # 4. Check if we can open position
+            if len(self.open_positions) >= self.config.max_open_positions:
+                logger.warning("Max positions reached, skipping signal")
+                return
+
+            # 5. Calculate position size
+            portfolio_value = self._get_portfolio_value()
+            position_size = calculate_position_size(
+                portfolio_value=portfolio_value,
+                entry_price=latest_signal.entry_price,
+                stop_loss_price=latest_signal.stop_loss,
+                confidence_score=latest_signal.confidence,
+                current_atr=self._calculate_atr(data),
+                baseline_atr=self._calculate_baseline_atr(data),
+                consecutive_wins=self._count_consecutive_wins(),
+                consecutive_losses=self._count_consecutive_losses(),
+                params=self.risk_params
+            )
+
+            if position_size == 0:
+                logger.info("Position size = 0 (confidence too low or risk limits)")
+                return
+
+            # 6. Place order
+            self._place_order(latest_signal, position_size)
+
+        except Exception as e:
+            logger.error(f"Iteration error: {e}", exc_info=True)
+
+    def _place_order(self, signal: Signal, size: float):
+        """
+        Place order on Hyperliquid.
+
+        Args:
+            signal: Trading signal
+            size: Position size in base currency
+        """
+        try:
+            symbol = self.config.default_symbol
+            is_buy = signal.direction == 1
+
+            # Get current market price for limit order
+            current_price = self.fetcher.get_current_price(symbol)
+            if current_price <= 0:
+                logger.error(f"Invalid price for {symbol}")
+                return
+
+            # Calculate limit price (slightly better than market)
+            offset = self.config.limit_price_offset_percent
+            if is_buy:
+                limit_price = current_price * (1 - offset)  # Buy lower
+            else:
+                limit_price = current_price * (1 + offset)  # Sell higher
+
+            # Round price to appropriate precision
+            limit_price = round(limit_price, 2)
+
+            logger.info(
+                f"Placing order: {symbol} {'BUY' if is_buy else 'SELL'} "
+                f"{size:.4f} @ {limit_price:.2f}"
+            )
+
+            # Place order
+            order = self.exchange.order(
+                symbol,
+                is_buy,
+                size,
+                limit_price,
+                {"limit": {"tif": "Gtc"}}  # Good-til-canceled
+            )
+
+            logger.info(f"Order placed: {order}")
+
+            # Track position
+            self.open_positions[symbol] = {
+                'signal': signal,
+                'size': size,
+                'entry_price': limit_price,
+                'stop_loss': signal.stop_loss,
+                'take_profit': signal.take_profit,
+                'timestamp': datetime.now(),
+                'order': order
+            }
+
+            # Record trade
+            self.trade_history.append({
+                'timestamp': datetime.now(),
+                'symbol': symbol,
+                'direction': 'LONG' if is_buy else 'SHORT',
+                'size': size,
+                'entry_price': limit_price,
+                'stop_loss': signal.stop_loss,
+                'confidence': signal.confidence,
+                'status': 'OPEN'
+            })
+
+        except Exception as e:
+            logger.error(f"Order placement failed: {e}", exc_info=True)
+
+    def _get_portfolio_value(self) -> float:
+        """
+        Get current portfolio value.
+
+        Returns:
+            Portfolio value in USD
+        """
+        try:
+            # Get account state from Hyperliquid
+            user_state = self.info.user_state(self.wallet.address)
+
+            # Extract account value
+            # Testnet starts with 100,000 USDT
+            margin_summary = user_state.get('marginSummary', {})
+            account_value = float(margin_summary.get('accountValue', 100000))
+
+            return account_value
+
+        except Exception as e:
+            logger.error(f"Failed to get portfolio value: {e}")
+            return 100000  # Default testnet starting balance
+
+    def _calculate_atr(self, data) -> float:
+        """Calculate current ATR (Average True Range)."""
+        from strategies.base import BaseStrategy
+        temp_strategy = BaseStrategy.__new__(BaseStrategy)
+        atr = temp_strategy._calculate_atr(data, period=14)
+        if atr.empty:
+            return 0.0
+        return float(atr.iloc[-1])
+
+    def _calculate_baseline_atr(self, data) -> float:
+        """Calculate baseline ATR (50-period average)."""
+        return self._calculate_atr(data)  # Simplified for now
+
+    def _count_consecutive_wins(self) -> int:
+        """Count consecutive winning trades."""
+        count = 0
+        for trade in reversed(self.trade_history):
+            if trade.get('pnl', 0) > 0:
+                count += 1
+            else:
+                break
+        return count
+
+    def _count_consecutive_losses(self) -> int:
+        """Count consecutive losing trades."""
+        count = 0
+        for trade in reversed(self.trade_history):
+            if trade.get('pnl', 0) < 0:
+                count += 1
+            else:
+                break
+        return count
+
+    def stop(self):
+        """Stop trading loop."""
+        self.is_running = False
+        logger.info("Testnet trader stopped")
+
+        # Print summary
+        self._print_summary()
+
+    def _print_summary(self):
+        """Print trading session summary."""
+        logger.info("=" * 50)
+        logger.info("TRADING SESSION SUMMARY")
+        logger.info("=" * 50)
+        logger.info(f"Total trades: {len(self.trade_history)}")
+        logger.info(f"Open positions: {len(self.open_positions)}")
+        logger.info(f"Final portfolio value: ${self._get_portfolio_value():,.2f}")
+        logger.info("=" * 50)
