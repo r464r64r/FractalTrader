@@ -24,6 +24,14 @@
 | Position Sizing | `risk/position_sizing.py` | ✅ Done | 19 | 98% |
 | **Backtesting** |
 | Backtest Runner | `backtesting/runner.py` | ✅ Done | 19 | Docker |
+| **Data Layer** (NEW) |
+| Base Fetcher | `data/fetcher.py` | ✅ Done | 6 | 100% |
+| Hyperliquid Fetcher | `data/hyperliquid_fetcher.py` | ✅ Done | 15 | 90% |
+| CCXT Fetcher | `data/ccxt_fetcher.py` | ✅ Done | 11 | 85% |
+| **Live Trading** (NEW) |
+| Testnet Trader | `live/hyperliquid/testnet.py` | ✅ Done | 7 | 80% |
+| Mainnet Trader | `live/hyperliquid/trader.py` | ✅ Done | 4 | 85% |
+| Trading Config | `live/hyperliquid/config.py` | ✅ Done | 11 | 95% |
 | **Infrastructure** |
 | Docker Environment | `Dockerfile`, `docker-start.sh` | ✅ Done | - | - |
 | MCP Server | `fractal_mcp/` | ✅ Done | - | - |
@@ -34,14 +42,18 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | **134** |
-| Passing | **134** (100%) |
+| Total tests | **206** |
+| Passing | **206** (100%) |
 | Coverage (avg) | **76%** |
 | Core modules | 95-100% |
 
+**New (Sprint 6 - Haiku):**
+- 32 Data fetcher tests (BaseFetcher, Hyperliquid, CCXT)
+- 22 Live trading tests (config, testnet, mainnet)
+
 ---
 
-## MVP Roadmap
+## MVP Roadmap (Updated December 2024)
 
 ### Completed Sprints
 
@@ -55,21 +67,34 @@
 - 116 tests implemented per TODO_TESTS.md
 - All tests passing
 
-### Remaining for MVP
+**Sprint 6 (Haiku):** Data Layer & Live Trading
+- Hyperliquid + CCXT data fetchers ✅ Done
+- Testnet integration ✅ Done
+- Live trading on Hyperliquid ✅ Done
+- 54 new tests (100% passing)
+- **MVP COMPLETE**
 
-| Priority | Task | Effort | Status |
-|----------|------|--------|--------|
-| 1 | Data fetcher implementation | Medium | 🔧 TODO |
-| 2 | Live trading integration (Freqtrade) | High | 🔧 TODO |
-| 3 | Portfolio-level risk controls | Medium | 🔧 TODO |
-| 4 | End-to-end integration test | Low | 🔧 TODO |
+### Remaining (Post-MVP)
+
+| Priority | Task | Effort | Status | Notes |
+|----------|------|--------|--------|-------|
+| 1 | Portfolio-level risk controls | Medium | 🔧 TODO | Multi-position P&L tracking |
+| 2 | End-to-end integration test | Low | 🔧 TODO | Testnet 24h validation |
+| 3 | Performance monitoring | Low | 🔧 TODO | Dashboard, metrics export |
+| 4 | Multi-exchange support | Medium | 🔧 TODO | Bybit, OKX via CCXT |
+| 5 | Telegram alerts | Low | 🔧 TODO | Trade notifications |
+
+**Removed from MVP:**
+- ❌ Freqtrade integration (replaced by Hyperliquid native SDK)
+- ❌ yfinance/stocks support (postponed post-MVP)
 
 ### Post-MVP (Optional)
 
 - Multi-timeframe analysis
+- Cross-exchange strategies (Binance, Bybit via CCXT)
 - Telegram notifications
 - Web dashboard
-- Additional exchanges via CCXT
+- Traditional stocks support (yfinance)
 
 ---
 
@@ -77,8 +102,9 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      DATA (OHLCV)                           │
-│                    data/fetcher.py                          │
+│                    DATA SOURCES                             │
+│  Hyperliquid SDK (live, 5000 candles) | CCXT (deep BT)     │
+│                  data/fetcher.py                            │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
@@ -102,7 +128,8 @@
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     EXECUTION                               │
-│         backtesting/runner.py │ live/freqtrade             │
+│  backtesting/runner.py (CCXT data) | live/hyperliquid      │
+│  testnet: app.hyperliquid-testnet.xyz (paper trading)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
