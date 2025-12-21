@@ -6,6 +6,13 @@ import time
 import logging
 
 import ccxt
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log
+)
 
 from data.fetcher import BaseFetcher
 
@@ -106,16 +113,13 @@ class CCXTFetcher(BaseFetcher):
             # Fetch all data from 'since' to now (pagination required)
             all_candles = self._fetch_all_since(symbol, timeframe, since_ms)
         else:
-            # Single request
-            try:
-                all_candles = self.exchange.fetch_ohlcv(
-                    symbol,
-                    timeframe,
-                    since=since_ms,
-                    limit=limit or 1000
-                )
-            except Exception as e:
-                raise ConnectionError(f"CCXT fetch error: {e}")
+            # Single request (with retry logic)
+            all_candles = self._fetch_ohlcv_with_retry(
+                symbol=symbol,
+                timeframe=timeframe,
+                since_ms=since_ms,
+                limit=limit or 1000
+            )
 
         if not all_candles:
             logger.warning(f"No data returned for {symbol} {timeframe}")
@@ -129,6 +133,49 @@ class CCXTFetcher(BaseFetcher):
 
         logger.info(f"Fetched {len(df)} candles for {symbol} {timeframe}")
         return df
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ccxt.NetworkError, ccxt.RequestTimeout)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
+    def _fetch_ohlcv_with_retry(
+        self,
+        symbol: str,
+        timeframe: str,
+        since_ms: Optional[int],
+        limit: int
+    ) -> list:
+        """
+        Fetch OHLCV with automatic retry on network errors.
+
+        Args:
+            symbol: Trading pair
+            timeframe: Candle timeframe
+            since_ms: Start timestamp (ms) or None
+            limit: Number of candles
+
+        Returns:
+            List of OHLCV arrays
+
+        Raises:
+            ConnectionError: After 3 failed attempts
+        """
+        try:
+            return self.exchange.fetch_ohlcv(
+                symbol,
+                timeframe,
+                since=since_ms,
+                limit=limit
+            )
+        except (ccxt.NetworkError, ccxt.RequestTimeout) as e:
+            logger.warning(f"Network error: {e}")
+            raise  # Let tenacity handle retry
+        except Exception as e:
+            logger.error(f"CCXT fetch error: {e}")
+            raise ConnectionError(f"CCXT fetch error: {e}")
 
     def _fetch_all_since(
         self,
@@ -155,14 +202,15 @@ class CCXTFetcher(BaseFetcher):
 
         while current_since < now_ms:
             try:
-                batch = self.exchange.fetch_ohlcv(
-                    symbol,
-                    timeframe,
-                    since=current_since,
+                # Use retry logic for each batch
+                batch = self._fetch_ohlcv_with_retry(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    since_ms=current_since,
                     limit=batch_size
                 )
             except Exception as e:
-                logger.error(f"Pagination error: {e}")
+                logger.error(f"Pagination error after retries: {e}")
                 break
 
             if not batch:
@@ -249,19 +297,32 @@ class CCXTFetcher(BaseFetcher):
             logger.error(f"Failed to fetch symbols: {e}")
             return []
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ccxt.NetworkError, ccxt.RequestTimeout)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
     def get_current_price(self, symbol: str) -> float:
         """
-        Get current price for a symbol.
+        Get current price for a symbol (with retry logic).
 
         Args:
             symbol: Trading pair (e.g., 'BTC/USDT')
 
         Returns:
             Current price as float
+
+        Raises:
+            ConnectionError: After 3 failed attempts
         """
         try:
             ticker = self.exchange.fetch_ticker(symbol)
             return float(ticker['last'])
+        except (ccxt.NetworkError, ccxt.RequestTimeout) as e:
+            logger.warning(f"Network error fetching price: {e}")
+            raise  # Let tenacity retry
         except Exception as e:
             logger.error(f"Failed to fetch price for {symbol}: {e}")
-            return 0.0
+            raise ConnectionError(f"Price fetch error: {e}")

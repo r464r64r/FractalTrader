@@ -42,14 +42,46 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | **206** |
-| Passing | **206** (100%) |
-| Coverage (avg) | **76%** |
-| Core modules | 95-100% |
+| **Core tests** | **134 passing** (no Docker required) |
+| **Full suite** | **206 tests** (requires Docker) |
+| **Passing rate** | **100%** (all tests pass) |
+| **Coverage (avg)** | **76%** |
+| **Core modules** | 95-100% coverage |
+
+**Test Distribution:**
+
+| Test File | Tests | Docker Required? |
+|-----------|-------|------------------|
+| `test_market_structure.py` | 21 | No |
+| `test_liquidity.py` | 16 | No |
+| `test_imbalance.py` | 17 | No |
+| `test_order_blocks.py` | 21 | No |
+| `test_risk.py` | 28 | No |
+| `test_strategies.py` | 31 | No |
+| `test_backtesting.py` | 19 | **Yes** (vectorbt) |
+| `test_data_fetchers.py` | 32 | **Yes** (hyperliquid) |
+| `test_live_trading.py` | 22 | **Yes** (eth-account) |
+
+**Running Tests:**
+
+```bash
+# Core tests only (134 tests, no Docker)
+python -m pytest tests/ -v \
+  --ignore=tests/test_backtesting.py \
+  --ignore=tests/test_data_fetchers.py \
+  --ignore=tests/test_live_trading.py
+
+# Full test suite (206 tests, requires Docker)
+./docker-start.sh test
+```
 
 **New (Sprint 6 - Haiku):**
 - 32 Data fetcher tests (BaseFetcher, Hyperliquid, CCXT)
 - 22 Live trading tests (config, testnet, mainnet)
+
+**Known Issues:**
+- Hyperliquid/eth-account dependencies may not install correctly outside Docker
+- Full test suite requires Docker environment
 
 ---
 
