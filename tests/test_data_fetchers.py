@@ -3,6 +3,8 @@
 import pytest
 import pandas as pd
 from datetime import datetime, timedelta
+from unittest.mock import Mock, patch, MagicMock
+import ccxt
 
 from data.hyperliquid_fetcher import HyperliquidFetcher
 from data.ccxt_fetcher import CCXTFetcher
@@ -293,3 +295,176 @@ class TestFetcherCompatibility:
 
         assert isinstance(signals_hl, list)
         assert isinstance(signals_ccxt, list)
+
+
+class TestRetryLogic:
+    """Tests for retry logic in fetchers (Phase 1.2)."""
+
+    def test_hyperliquid_retry_on_connection_error(self):
+        """Test HyperliquidFetcher retries on ConnectionError."""
+        fetcher = HyperliquidFetcher(network='testnet')
+
+        # Mock candles_snapshot to fail twice, then succeed
+        mock_candles = [
+            {'t': 1700000000000, 'o': '40000', 'h': '41000',
+             'l': '39000', 'c': '40500', 'v': '100'}
+        ]
+
+        with patch.object(fetcher.info, 'candles_snapshot') as mock_method:
+            mock_method.side_effect = [
+                ConnectionError("Network timeout"),
+                ConnectionError("Network timeout"),
+                mock_candles  # Success on 3rd attempt
+            ]
+
+            # Should succeed after retries
+            result = fetcher._fetch_candles_with_retry(
+                symbol='BTC',
+                interval='1h',
+                start_time=1700000000000,
+                end_time=1700003600000
+            )
+
+            assert result == mock_candles
+            assert mock_method.call_count == 3
+
+    def test_hyperliquid_retry_max_attempts_exceeded(self):
+        """Test HyperliquidFetcher raises after max retries."""
+        fetcher = HyperliquidFetcher(network='testnet')
+
+        with patch.object(fetcher.info, 'candles_snapshot') as mock_method:
+            # Fail all 3 attempts
+            mock_method.side_effect = ConnectionError("Network timeout")
+
+            with pytest.raises(ConnectionError):
+                fetcher._fetch_candles_with_retry(
+                    symbol='BTC',
+                    interval='1h',
+                    start_time=1700000000000,
+                    end_time=1700003600000
+                )
+
+            assert mock_method.call_count == 3
+
+    def test_hyperliquid_get_current_price_retry(self):
+        """Test get_current_price retries on failure."""
+        fetcher = HyperliquidFetcher(network='testnet')
+
+        with patch.object(fetcher.info, 'all_mids') as mock_method:
+            mock_method.side_effect = [
+                ConnectionError("Timeout"),
+                {'BTC': '42000'}  # Success on 2nd attempt
+            ]
+
+            price = fetcher.get_current_price('BTC')
+
+            assert price == 42000.0
+            assert mock_method.call_count == 2
+
+    def test_ccxt_retry_on_network_error(self):
+        """Test CCXTFetcher retries on NetworkError."""
+        fetcher = CCXTFetcher('binance')
+
+        mock_ohlcv = [
+            [1700000000000, 40000, 41000, 39000, 40500, 1000]
+        ]
+
+        with patch.object(fetcher.exchange, 'fetch_ohlcv') as mock_method:
+            mock_method.side_effect = [
+                ccxt.NetworkError("Connection failed"),
+                ccxt.NetworkError("Connection failed"),
+                mock_ohlcv  # Success on 3rd attempt
+            ]
+
+            result = fetcher._fetch_ohlcv_with_retry(
+                symbol='BTC/USDT',
+                timeframe='1h',
+                since_ms=None,
+                limit=100
+            )
+
+            assert result == mock_ohlcv
+            assert mock_method.call_count == 3
+
+    def test_ccxt_retry_on_request_timeout(self):
+        """Test CCXTFetcher retries on RequestTimeout."""
+        fetcher = CCXTFetcher('binance')
+
+        with patch.object(fetcher.exchange, 'fetch_ohlcv') as mock_method:
+            mock_method.side_effect = [
+                ccxt.RequestTimeout("Timeout"),
+                [[1700000000000, 40000, 41000, 39000, 40500, 1000]]
+            ]
+
+            result = fetcher._fetch_ohlcv_with_retry(
+                symbol='BTC/USDT',
+                timeframe='1h',
+                since_ms=None,
+                limit=100
+            )
+
+            assert len(result) == 1
+            assert mock_method.call_count == 2
+
+    def test_ccxt_retry_max_attempts_exceeded(self):
+        """Test CCXTFetcher raises after max retries."""
+        fetcher = CCXTFetcher('binance')
+
+        with patch.object(fetcher.exchange, 'fetch_ohlcv') as mock_method:
+            mock_method.side_effect = ccxt.NetworkError("Persistent failure")
+
+            with pytest.raises(ccxt.NetworkError):
+                fetcher._fetch_ohlcv_with_retry(
+                    symbol='BTC/USDT',
+                    timeframe='1h',
+                    since_ms=None,
+                    limit=100
+                )
+
+            assert mock_method.call_count == 3
+
+    def test_ccxt_get_current_price_retry(self):
+        """Test CCXT get_current_price retries on network error."""
+        fetcher = CCXTFetcher('binance')
+
+        with patch.object(fetcher.exchange, 'fetch_ticker') as mock_method:
+            mock_method.side_effect = [
+                ccxt.NetworkError("Network down"),
+                {'last': 42000}  # Success on 2nd attempt
+            ]
+
+            price = fetcher.get_current_price('BTC/USDT')
+
+            assert price == 42000.0
+            assert mock_method.call_count == 2
+
+    def test_retry_exponential_backoff(self):
+        """Test that retry uses exponential backoff."""
+        fetcher = HyperliquidFetcher(network='testnet')
+
+        with patch.object(fetcher.info, 'candles_snapshot') as mock_method:
+            with patch('time.sleep') as mock_sleep:
+                mock_method.side_effect = [
+                    ConnectionError("Fail 1"),
+                    ConnectionError("Fail 2"),
+                    [{'t': 1700000000000, 'o': '40000', 'h': '41000',
+                      'l': '39000', 'c': '40500', 'v': '100'}]
+                ]
+
+                fetcher._fetch_candles_with_retry(
+                    symbol='BTC',
+                    interval='1h',
+                    start_time=1700000000000,
+                    end_time=1700003600000
+                )
+
+                # Should have slept between retries
+                assert mock_sleep.call_count == 2
+
+                # First sleep should be ~2 seconds (min wait)
+                first_sleep = mock_sleep.call_args_list[0][0][0]
+                assert 2.0 <= first_sleep <= 4.0
+
+                # Second sleep should be longer (exponential backoff)
+                second_sleep = mock_sleep.call_args_list[1][0][0]
+                assert second_sleep >= first_sleep

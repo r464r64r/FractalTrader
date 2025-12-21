@@ -7,8 +7,9 @@ scipy>=1.11.0
 vectorbt>=0.26.0
 
 # Live Trading
-freqtrade>=2024.1
 ccxt>=4.0.0
+hyperliquid>=0.1.0
+eth-account>=0.8.0
 
 # Visualization
 plotly>=5.17.0
@@ -19,6 +20,7 @@ pytest>=7.4.3
 pytest-cov>=4.1.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
+tenacity>=8.2.0
 
 # MCP Server
 mcp>=1.0.0

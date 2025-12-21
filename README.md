@@ -2,6 +2,20 @@
 
 An algorithmic trading system based on **Smart Money Concepts (SMC)** — detecting institutional order flow patterns for cryptocurrency trading.
 
+## ⚠️ DISCLAIMER
+
+**This software is provided for educational and research purposes only.**
+
+- **NO WARRANTIES:** This software is provided "as is" without any guarantees
+- **USE AT YOUR OWN RISK:** Algorithmic trading involves substantial risk of loss
+- **NO LIABILITY:** Authors and contributors are not liable for any trading losses
+- **TESTNET FIRST:** Always validate on testnet for 24+ hours before considering mainnet
+- **NOT FINANCIAL ADVICE:** This is research software, not investment advice
+
+**Live trading can result in total loss of capital. Never trade with money you cannot afford to lose.**
+
+---
+
 ## Core Philosophy
 
 Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and order blocks — the footprints of smart money.
@@ -14,7 +28,42 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 | **Strategies** | Liquidity Sweep Reversal, FVG Fill, BOS + Order Block |
 | **Risk** | Confidence scoring (0-100), Dynamic position sizing |
 | **Backtesting** | Vectorized backtesting with vectorbt, Parameter optimization |
+| **Data Sources** | Hyperliquid (live), CCXT (backtesting) |
+| **Live Trading** | Hyperliquid testnet/mainnet integration |
 | **Infrastructure** | Docker environment, MCP server for Claude Code |
+
+## 🚧 Project Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Core SMC Logic** | ✅ **Production-ready** | 134 tests, 95-100% coverage |
+| **Backtesting** | ✅ **Production-ready** | vectorbt integration, Docker-based |
+| **Data Layer** | ⚠️ **Beta** | Works in Docker, needs local testing |
+| **Testnet Trading** | 🔴 **Alpha** | Requires 24h+ validation |
+| **Mainnet Trading** | 🔴 **Not Recommended** | High risk, incomplete validation |
+
+### Known Limitations
+
+1. **Testing Environment:**
+   - 72 tests require Docker (missing `hyperliquid`/`eth-account` dependencies locally)
+   - Full test suite: 206 tests (134 run without Docker)
+
+2. **Strategy Coverage:**
+   - Strategy modules: 13-42% test coverage (private methods not tested)
+   - Core detection: 95-100% coverage ✅
+
+3. **Production Gaps:**
+   - ⚠️ No retry logic in data fetchers (network failures will crash bot)
+   - ⚠️ No portfolio-level risk controls (only per-trade limits)
+   - ⚠️ No state persistence (restart loses position tracking)
+   - ⚠️ No end-to-end integration tests
+
+4. **Recommended Path:**
+   - ✅ Use for backtesting and research
+   - ⚠️ Testnet only with close monitoring
+   - 🔴 Mainnet not advised until post-v1.0 validation
+
+See [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md) for production readiness roadmap.
 
 ## Quick Start
 
@@ -91,17 +140,27 @@ fractal-trader/
 ├── fractal_mcp/          # MCP Server for Claude Code
 │   └── server.py             # Tools: run_tests, run_backtest
 │
-├── tests/                # Test suite (134 tests)
-│   ├── test_market_structure.py
-│   ├── test_liquidity.py
-│   ├── test_imbalance.py
-│   ├── test_order_blocks.py
-│   ├── test_risk.py
-│   ├── test_strategies.py
-│   └── test_backtesting.py   # Requires Docker/vectorbt
+├── data/                 # Data fetching
+│   ├── fetcher.py            # Base interface
+│   ├── hyperliquid_fetcher.py # Live data (5000 candles)
+│   └── ccxt_fetcher.py       # Historical data (unlimited)
 │
-└── live/                 # Production (planned)
-    └── freqtrade_strategy.py
+├── live/                 # Live trading
+│   └── hyperliquid/
+│       ├── config.py         # Trading configuration
+│       ├── testnet.py        # Testnet paper trading
+│       └── trader.py         # Mainnet trader
+│
+└── tests/                # Test suite (206 total)
+    ├── test_market_structure.py (21 tests)
+    ├── test_liquidity.py (16 tests)
+    ├── test_imbalance.py (17 tests)
+    ├── test_order_blocks.py (21 tests)
+    ├── test_risk.py (28 tests)
+    ├── test_strategies.py (31 tests)
+    ├── test_backtesting.py (19 tests - Docker only)
+    ├── test_data_fetchers.py (32 tests - Docker only)
+    └── test_live_trading.py (22 tests - Docker only)
 ```
 
 ## Strategies
@@ -174,16 +233,23 @@ python -m pytest tests/ -v --ignore=tests/test_backtesting.py
 python -m pytest tests/ --cov=core --cov=risk --cov=strategies
 ```
 
-**Test status:** 134 tests, 100% passing, 76% coverage
+**Test status:**
+- **Core tests:** 134 passing (run without Docker)
+- **Full suite:** 206 tests (requires Docker for data/live trading tests)
+- **Coverage:** 76% average, core modules 95-100%
 
 ## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| pandas, numpy, scipy | Data manipulation |
-| vectorbt | Backtesting engine |
-| pytest, pytest-cov | Testing |
-| freqtrade (planned) | Live trading |
+| Package | Purpose | Docker Only? |
+|---------|---------|--------------|
+| pandas, numpy, scipy | Data manipulation | No |
+| vectorbt | Backtesting engine | Yes |
+| pytest, pytest-cov | Testing | No |
+| ccxt | Multi-exchange data | No |
+| hyperliquid | Hyperliquid DEX SDK | Yes* |
+| eth-account | Wallet management | Yes* |
+
+\* Available in Docker, may have issues locally (see [requirements.txt](requirements.txt))
 
 See `requirements.txt` for full list.
 

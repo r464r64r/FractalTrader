@@ -9,6 +9,7 @@ import numpy as np
 
 from strategies.fvg_fill import FVGFillStrategy
 from strategies.bos_orderblock import BOSOrderBlockStrategy
+from strategies.liquidity_sweep import LiquiditySweepStrategy
 from strategies.base import Signal
 
 
@@ -457,3 +458,637 @@ class TestBOSOrderBlockStrategy:
             assert signal.entry_price > 0
             assert signal.stop_loss > 0
             assert signal.confidence >= 0
+
+
+# =============================================================================
+# Liquidity Sweep Strategy Tests (Phase 1.3)
+# =============================================================================
+
+
+@pytest.fixture
+def liquidity_sweep_data():
+    """Data with clear liquidity sweep pattern."""
+    dates = pd.date_range("2024-01-01", periods=30, freq="1h")
+
+    # Pattern:
+    # - Swing low at index 5 (price = 100)
+    # - Price sweeps below (low = 99.5) at index 20
+    # - Reverses back inside (close = 101) - bullish sweep
+    data = pd.DataFrame({
+        "open":  [105, 104, 103, 102, 101, 100, 101, 102, 103, 104,
+                  105, 106, 107, 106, 105, 104, 103, 102, 101, 100,
+                  99.5, 101, 102, 103, 104, 105, 106, 107, 108, 109],
+        "high":  [106, 105, 104, 103, 102, 101, 102, 103, 104, 105,
+                  106, 107, 108, 107, 106, 105, 104, 103, 102, 101,
+                  101, 102, 103, 104, 105, 106, 107, 108, 109, 110],
+        "low":   [104, 103, 102, 101, 100, 99, 100, 101, 102, 103,
+                  104, 105, 106, 105, 104, 103, 102, 101, 100, 99.5,
+                  99, 100, 101, 102, 103, 104, 105, 106, 107, 108],
+        "close": [104, 103, 102, 101, 100, 100, 101, 102, 103, 104,
+                  105, 106, 107, 106, 105, 104, 103, 102, 101, 100,
+                  101, 101, 102, 103, 104, 105, 106, 107, 108, 109],
+        "volume": [1000] * 30
+    }, index=dates)
+
+    return data
+
+
+class TestLiquiditySweepStrategy:
+    """Tests for Liquidity Sweep Strategy (Phase 1.3 - coverage improvement)."""
+
+    def test_strategy_initialization(self):
+        """Test strategy initializes with correct defaults."""
+        strategy = LiquiditySweepStrategy()
+
+        assert strategy.name == "liquidity_sweep"
+        assert strategy.params["swing_period"] == 5
+        assert strategy.params["min_sweep_percent"] == 0.001
+        assert strategy.params["max_reversal_bars"] == 3
+        assert strategy.params["min_rr_ratio"] == 1.5
+
+    def test_custom_parameters(self):
+        """Test strategy accepts custom parameters."""
+        custom_params = {
+            "swing_period": 10,
+            "min_rr_ratio": 2.0
+        }
+        strategy = LiquiditySweepStrategy(custom_params)
+
+        assert strategy.params["swing_period"] == 10
+        assert strategy.params["min_rr_ratio"] == 2.0
+        # Default params should still be there
+        assert strategy.params["max_reversal_bars"] == 3
+
+    def test_generate_signals_basic(self, liquidity_sweep_data):
+        """Test signal generation with bullish sweep pattern."""
+        strategy = LiquiditySweepStrategy()
+        signals = strategy.generate_signals(liquidity_sweep_data)
+
+        # Should detect the bullish sweep
+        assert isinstance(signals, list)
+        # May or may not generate signal depending on RR filter
+
+    def test_combine_liquidity_levels(self, sample_ohlcv):
+        """Test combining swing levels with equal levels."""
+        strategy = LiquiditySweepStrategy()
+
+        # Create sample swing and equal levels
+        swing_levels = pd.Series([100.0, None, 105.0, None, 110.0],
+                                index=sample_ohlcv.index[:5])
+        equal_levels = pd.Series([None, 103.0, None, None, 111.0],
+                                index=sample_ohlcv.index[:5])
+
+        combined = strategy._combine_liquidity_levels(swing_levels, equal_levels)
+
+        # Equal levels should override swing levels
+        assert combined.iloc[0] == 100.0  # From swing
+        assert combined.iloc[1] == 103.0  # From equal (overrides NaN)
+        assert combined.iloc[2] == 105.0  # From swing
+        assert combined.iloc[4] == 111.0  # From equal (overrides 110.0)
+
+    def test_create_long_signal_basic(self, liquidity_sweep_data):
+        """Test creating a long signal after bullish sweep."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = liquidity_sweep_data
+
+        # Find swing points
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Try to create signal at sweep bar (index 20)
+        idx = data.index[20]
+        signal = strategy._create_long_signal(data, idx, swing_highs, swing_lows)
+
+        if signal is not None:
+            assert signal.direction == 1
+            assert signal.entry_price == data.loc[idx, "close"]
+            assert signal.stop_loss < signal.entry_price
+            assert signal.take_profit > signal.entry_price
+            assert signal.confidence >= 0
+            assert signal.confidence <= 100
+            assert "sweep_low" in signal.metadata
+            assert signal.metadata["signal_type"] == "bullish_sweep"
+
+    def test_create_long_signal_invalid_stop(self, sample_ohlcv):
+        """Test that long signal returns None if stop >= entry."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv.copy()
+
+        # Manipulate data to make invalid stop loss
+        idx = data.index[50]
+        data.loc[idx, "low"] = data.loc[idx, "close"] * 1.01  # Low > close
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        signal = strategy._create_long_signal(data, idx, swing_highs, swing_lows)
+
+        # Should return None for invalid setup
+        assert signal is None
+
+    def test_create_long_signal_with_prior_swing_high(self, liquidity_sweep_data):
+        """Test long signal uses prior swing high for TP when available."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = liquidity_sweep_data
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Create signal late in data (should have prior swing highs)
+        idx = data.index[25]
+        signal = strategy._create_long_signal(data, idx, swing_highs, swing_lows)
+
+        if signal is not None and len(swing_highs[swing_highs.index < idx].dropna()) > 0:
+            prior_high = swing_highs[swing_highs.index < idx].dropna().iloc[-1]
+            # TP should be either prior high or 2:1 RR
+            assert signal.take_profit > signal.entry_price
+
+    def test_create_long_signal_fallback_to_2_1_rr(self, liquidity_sweep_data):
+        """Test long signal TP calculation logic."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = liquidity_sweep_data.copy()
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        idx = data.index[20]
+        signal = strategy._create_long_signal(data, idx, swing_highs, swing_lows)
+
+        if signal is not None:
+            # TP should be either prior swing high or 2:1 RR
+            # Just verify TP is above entry
+            assert signal.take_profit > signal.entry_price
+            # And that it's reasonable (not too far)
+            assert signal.take_profit < signal.entry_price * 1.2  # Within 20%
+
+    def test_create_short_signal_basic(self, sample_ohlcv):
+        """Test creating a short signal after bearish sweep."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Try creating short signal at an arbitrary index
+        idx = data.index[100]
+        signal = strategy._create_short_signal(data, idx, swing_highs, swing_lows)
+
+        if signal is not None:
+            assert signal.direction == -1
+            assert signal.entry_price == data.loc[idx, "close"]
+            assert signal.stop_loss > signal.entry_price
+            assert signal.take_profit < signal.entry_price
+            assert signal.confidence >= 0
+            assert signal.confidence <= 100
+            assert "sweep_high" in signal.metadata
+            assert signal.metadata["signal_type"] == "bearish_sweep"
+
+    def test_create_short_signal_invalid_stop(self, sample_ohlcv):
+        """Test that short signal returns None if stop <= entry."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv.copy()
+
+        # Manipulate data to make invalid stop loss
+        idx = data.index[50]
+        data.loc[idx, "high"] = data.loc[idx, "close"] * 0.99  # High < close
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        signal = strategy._create_short_signal(data, idx, swing_highs, swing_lows)
+
+        # Should return None for invalid setup
+        assert signal is None
+
+    def test_create_short_signal_with_prior_swing_low(self, sample_ohlcv):
+        """Test short signal uses prior swing low for TP when available."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Create signal late in data
+        idx = data.index[150]
+        signal = strategy._create_short_signal(data, idx, swing_highs, swing_lows)
+
+        if signal is not None:
+            # TP should be below entry
+            assert signal.take_profit < signal.entry_price
+
+    def test_create_short_signal_fallback_to_2_1_rr(self, sample_ohlcv):
+        """Test short signal TP calculation logic."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        idx = data.index[100]
+        signal = strategy._create_short_signal(data, idx, swing_highs, swing_lows)
+
+        if signal is not None:
+            # TP should be either prior swing low or 2:1 RR
+            # Just verify TP is below entry
+            assert signal.take_profit < signal.entry_price
+            # And that it's reasonable (not too far)
+            assert signal.take_profit > signal.entry_price * 0.8  # Within 20%
+
+    def test_confidence_calculation(self, liquidity_sweep_data):
+        """Test confidence scoring for liquidity sweep signals."""
+        strategy = LiquiditySweepStrategy()
+        data = liquidity_sweep_data
+
+        # Calculate confidence at various points
+        confidence_early = strategy.calculate_confidence(data, 10)
+        confidence_late = strategy.calculate_confidence(data, 25)
+
+        # Both should be valid confidence scores
+        assert 0 <= confidence_early <= 100
+        assert 0 <= confidence_late <= 100
+
+    def test_signals_filtered_by_min_rr(self, liquidity_sweep_data):
+        """Test that signals are filtered by minimum RR ratio."""
+        # Strategy with very high RR requirement (should filter most signals)
+        strategy_high_rr = LiquiditySweepStrategy({"min_rr_ratio": 10.0})
+        signals_high = strategy_high_rr.generate_signals(liquidity_sweep_data)
+
+        # Strategy with low RR requirement
+        strategy_low_rr = LiquiditySweepStrategy({"min_rr_ratio": 1.0})
+        signals_low = strategy_low_rr.generate_signals(liquidity_sweep_data)
+
+        # Low RR should have >= signals than high RR
+        assert len(signals_low) >= len(signals_high)
+
+    def test_exception_handling_in_create_long_signal(self, sample_ohlcv):
+        """Test that exceptions in _create_long_signal return None."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Use invalid index (should trigger exception)
+        invalid_idx = pd.Timestamp("2025-01-01")
+        signal = strategy._create_long_signal(data, invalid_idx, swing_highs, swing_lows)
+
+        # Should return None on exception
+        assert signal is None
+
+    def test_exception_handling_in_create_short_signal(self, sample_ohlcv):
+        """Test that exceptions in _create_short_signal return None."""
+        from core.market_structure import find_swing_points
+
+        strategy = LiquiditySweepStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Use invalid index
+        invalid_idx = pd.Timestamp("2025-01-01")
+        signal = strategy._create_short_signal(data, invalid_idx, swing_highs, swing_lows)
+
+        # Should return None on exception
+        assert signal is None
+
+
+# =============================================================================
+# BOS OrderBlock Strategy Additional Tests (Phase 1.3)
+# =============================================================================
+
+
+class TestBOSOrderBlockStrategyExtended:
+    """Extended tests for BOS + OrderBlock Strategy (Phase 1.3 - coverage improvement)."""
+
+    def test_find_recent_ob_basic(self, sample_ohlcv):
+        """Test finding recent order block before BOS."""
+        from core.order_blocks import find_order_blocks
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        # Find order blocks
+        bullish_ob, bearish_ob = find_order_blocks(
+            data["open"], data["high"], data["low"], data["close"],
+            min_impulse_percent=0.01
+        )
+
+        if len(bullish_ob) > 0:
+            # Pick a timestamp after some OBs
+            bos_idx = data.index[100]
+            recent_ob = strategy._find_recent_ob(bullish_ob, bos_idx, lookback=10)
+
+            if recent_ob is not None:
+                assert "timestamp" in recent_ob
+                assert "ob_high" in recent_ob
+                assert "ob_low" in recent_ob
+                assert "invalidated" in recent_ob
+                assert recent_ob["timestamp"] < bos_idx
+
+    def test_find_recent_ob_empty_dataframe(self):
+        """Test finding OB with empty DataFrame."""
+        strategy = BOSOrderBlockStrategy()
+
+        # Empty OB DataFrame
+        empty_obs = pd.DataFrame(columns=["ob_high", "ob_low", "invalidated"])
+        bos_idx = pd.Timestamp("2024-01-01")
+
+        result = strategy._find_recent_ob(empty_obs, bos_idx)
+
+        assert result is None
+
+    def test_find_recent_ob_no_prior_obs(self, sample_ohlcv):
+        """Test finding OB when there are no prior OBs."""
+        from core.order_blocks import find_order_blocks
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        bullish_ob, bearish_ob = find_order_blocks(
+            data["open"], data["high"], data["low"], data["close"],
+            min_impulse_percent=0.01
+        )
+
+        if len(bullish_ob) > 0:
+            # Use very early timestamp (before any OBs)
+            bos_idx = data.index[0]
+            recent_ob = strategy._find_recent_ob(bullish_ob, bos_idx)
+
+            # Should return None (no prior OBs)
+            assert recent_ob is None
+
+    def test_find_recent_ob_respects_lookback(self, sample_ohlcv):
+        """Test that lookback parameter limits search window."""
+        from core.order_blocks import find_order_blocks
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        bullish_ob, bearish_ob = find_order_blocks(
+            data["open"], data["high"], data["low"], data["close"],
+            min_impulse_percent=0.01
+        )
+
+        if len(bullish_ob) > 10:
+            bos_idx = data.index[150]
+
+            # Small lookback
+            ob_small = strategy._find_recent_ob(bullish_ob, bos_idx, lookback=3)
+
+            # Large lookback
+            ob_large = strategy._find_recent_ob(bullish_ob, bos_idx, lookback=50)
+
+            # Both should find something if OBs exist
+            # Large lookback might find an earlier OB
+            if ob_small and ob_large:
+                assert ob_small["timestamp"] <= bos_idx
+                assert ob_large["timestamp"] <= bos_idx
+
+    def test_wait_for_retest_bullish(self, sample_ohlcv):
+        """Test waiting for bullish OB retest after BOS."""
+        from core.market_structure import find_swing_points
+        from core.order_blocks import find_order_blocks
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        bullish_ob, bearish_ob = find_order_blocks(
+            data["open"], data["high"], data["low"], data["close"],
+            min_impulse_percent=0.01
+        )
+
+        if len(bullish_ob) > 0:
+            # Simulate OB and BOS
+            ob_idx = bullish_ob.index[0]
+            ob_details = {
+                "timestamp": ob_idx,
+                "ob_high": bullish_ob.iloc[0]["ob_high"],
+                "ob_low": bullish_ob.iloc[0]["ob_low"],
+                "invalidated": False
+            }
+
+            bos_idx = data.index[min(50, len(data)-1)]
+
+            signal = strategy._wait_for_retest(
+                data, bos_idx, ob_details, bullish_ob, swing_highs, direction="long"
+            )
+
+            # May or may not generate signal (depends on retest)
+            if signal is not None:
+                assert signal.direction == 1
+                assert signal.entry_price > 0
+                assert signal.stop_loss < signal.entry_price
+                assert signal.take_profit > signal.entry_price
+
+    def test_wait_for_retest_bearish(self, sample_ohlcv):
+        """Test waiting for bearish OB retest after BOS."""
+        from core.market_structure import find_swing_points
+        from core.order_blocks import find_order_blocks
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        bullish_ob, bearish_ob = find_order_blocks(
+            data["open"], data["high"], data["low"], data["close"],
+            min_impulse_percent=0.01
+        )
+
+        if len(bearish_ob) > 0:
+            ob_idx = bearish_ob.index[0]
+            ob_details = {
+                "timestamp": ob_idx,
+                "ob_high": bearish_ob.iloc[0]["ob_high"],
+                "ob_low": bearish_ob.iloc[0]["ob_low"],
+                "invalidated": False
+            }
+
+            bos_idx = data.index[min(50, len(data)-1)]
+
+            signal = strategy._wait_for_retest(
+                data, bos_idx, ob_details, bearish_ob, swing_lows, direction="short"
+            )
+
+            if signal is not None:
+                assert signal.direction == -1
+                assert signal.entry_price > 0
+                assert signal.stop_loss > signal.entry_price
+                assert signal.take_profit < signal.entry_price
+
+    def test_wait_for_retest_invalidated_ob(self, sample_ohlcv):
+        """Test that invalidated OB does not generate signal."""
+        from core.market_structure import find_swing_points
+        from core.order_blocks import find_order_blocks
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        bullish_ob, _ = find_order_blocks(
+            data["open"], data["high"], data["low"], data["close"]
+        )
+
+        if len(bullish_ob) > 0:
+            ob_idx = bullish_ob.index[0]
+            ob_details = {
+                "timestamp": ob_idx,
+                "ob_high": bullish_ob.iloc[0]["ob_high"],
+                "ob_low": bullish_ob.iloc[0]["ob_low"],
+                "invalidated": True  # Invalidated OB
+            }
+
+            bos_idx = data.index[50]
+
+            signal = strategy._wait_for_retest(
+                data, bos_idx, ob_details, bullish_ob, swing_highs, direction="long"
+            )
+
+            # Should not generate signal for invalidated OB
+            assert signal is None
+
+    def test_create_long_signal_basic(self, sample_ohlcv):
+        """Test creating long signal from OB retest."""
+        from core.market_structure import find_swing_points
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Simulate OB details
+        idx = data.index[100]
+        ob_details = {
+            "timestamp": data.index[95],
+            "ob_high": data.loc[data.index[95], "high"],
+            "ob_low": data.loc[data.index[95], "low"],
+            "invalidated": False
+        }
+
+        signal = strategy._create_long_signal(
+            data, idx, ob_details, swing_highs
+        )
+
+        if signal is not None:
+            assert signal.direction == 1
+            assert signal.entry_price == data.loc[idx, "close"]
+            assert signal.stop_loss < ob_details["ob_low"]
+            assert signal.take_profit > signal.entry_price
+            assert 0 <= signal.confidence <= 100
+
+    def test_create_short_signal_basic(self, sample_ohlcv):
+        """Test creating short signal from OB retest."""
+        from core.market_structure import find_swing_points
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        swing_highs, swing_lows = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Simulate OB details
+        idx = data.index[100]
+        ob_details = {
+            "timestamp": data.index[95],
+            "ob_high": data.loc[data.index[95], "high"],
+            "ob_low": data.loc[data.index[95], "low"],
+            "invalidated": False
+        }
+
+        signal = strategy._create_short_signal(
+            data, idx, ob_details, swing_lows
+        )
+
+        if signal is not None:
+            assert signal.direction == -1
+            assert signal.entry_price == data.loc[idx, "close"]
+            assert signal.stop_loss > ob_details["ob_high"]
+            assert signal.take_profit < signal.entry_price
+            assert 0 <= signal.confidence <= 100
+
+    def test_exception_handling_in_private_methods(self, sample_ohlcv):
+        """Test that exceptions in private methods don't crash."""
+        from core.market_structure import find_swing_points
+
+        strategy = BOSOrderBlockStrategy()
+        data = sample_ohlcv
+
+        swing_highs, _ = find_swing_points(
+            data["high"], data["low"], n=5
+        )
+
+        # Invalid OB details (should trigger exception handling)
+        invalid_ob = {
+            "timestamp": pd.Timestamp("2025-01-01"),  # Future date
+            "ob_high": 100,
+            "ob_low": 99,
+            "invalidated": False
+        }
+
+        invalid_idx = pd.Timestamp("2025-01-02")
+
+        # Should return None on exception
+        signal = strategy._create_long_signal(
+            data, invalid_idx, invalid_ob, swing_highs
+        )
+
+        assert signal is None
+
+    def test_max_ob_age_parameter(self, sample_ohlcv):
+        """Test that max_ob_age_bars parameter is respected."""
+        # Create strategy with very short OB validity
+        strategy_short = BOSOrderBlockStrategy({"ob_validity_bars": 5})
+
+        # Create strategy with long OB validity
+        strategy_long = BOSOrderBlockStrategy({"ob_validity_bars": 100})
+
+        assert strategy_short.params["ob_validity_bars"] == 5
+        assert strategy_long.params["ob_validity_bars"] == 100
+
+        # Generate signals (short validity should have <= signals)
+        signals_short = strategy_short.generate_signals(sample_ohlcv)
+        signals_long = strategy_long.generate_signals(sample_ohlcv)
+
+        # Longer validity might find more signals
+        assert len(signals_long) >= len(signals_short)

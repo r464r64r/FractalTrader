@@ -8,6 +8,13 @@ import logging
 
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log
+)
 
 from data.fetcher import BaseFetcher
 
@@ -119,16 +126,13 @@ class HyperliquidFetcher(BaseFetcher):
             # Calculate start time based on limit and timeframe
             start_time = self._calculate_start_time(end_time, timeframe, limit)
 
-        # Fetch data from Hyperliquid
-        try:
-            candles = self.info.candles_snapshot(
-                name=symbol,
-                interval=hl_timeframe,
-                startTime=start_time,
-                endTime=end_time
-            )
-        except Exception as e:
-            raise ConnectionError(f"Hyperliquid API error: {e}")
+        # Fetch data from Hyperliquid (with retry logic)
+        candles = self._fetch_candles_with_retry(
+            symbol=symbol,
+            interval=hl_timeframe,
+            start_time=start_time,
+            end_time=end_time
+        )
 
         if not candles:
             logger.warning(f"No data returned for {symbol} {timeframe}")
@@ -146,6 +150,48 @@ class HyperliquidFetcher(BaseFetcher):
 
         logger.info(f"Fetched {len(df)} candles for {symbol} {timeframe}")
         return df
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
+    def _fetch_candles_with_retry(
+        self,
+        symbol: str,
+        interval: str,
+        start_time: int,
+        end_time: int
+    ) -> list:
+        """
+        Fetch candles with automatic retry on network errors.
+
+        Args:
+            symbol: Coin name
+            interval: Hyperliquid timeframe
+            start_time: Start timestamp (ms)
+            end_time: End timestamp (ms)
+
+        Returns:
+            List of candle dicts
+
+        Raises:
+            ConnectionError: After 3 failed attempts
+        """
+        try:
+            candles = self.info.candles_snapshot(
+                name=symbol,
+                interval=interval,
+                startTime=start_time,
+                endTime=end_time
+            )
+            return candles
+        except Exception as e:
+            # Convert all exceptions to ConnectionError for retry logic
+            logger.warning(f"API request failed: {e}")
+            raise ConnectionError(f"Hyperliquid API error: {e}")
 
     def _parse_since(self, since: str) -> int:
         """
@@ -275,19 +321,29 @@ class HyperliquidFetcher(BaseFetcher):
             logger.error(f"Failed to fetch symbols: {e}")
             return []
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True
+    )
     def get_current_price(self, symbol: str) -> float:
         """
-        Get current price for a symbol.
+        Get current price for a symbol (with retry logic).
 
         Args:
             symbol: Coin name (e.g., 'BTC')
 
         Returns:
             Current price as float
+
+        Raises:
+            ConnectionError: After 3 failed attempts
         """
         try:
             all_mids = self.info.all_mids()
             return float(all_mids.get(symbol, 0))
         except Exception as e:
-            logger.error(f"Failed to fetch price for {symbol}: {e}")
-            return 0.0
+            logger.warning(f"Failed to fetch price for {symbol}: {e}")
+            raise ConnectionError(f"Price fetch error: {e}")
