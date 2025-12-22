@@ -13,7 +13,17 @@
       "Bash(python -m pytest tests/test_strategies.py -v --tb=short)",
       "Bash(python -m pytest tests/ -v --tb=no --co -q)",
       "Bash(python -m pytest tests/ --collect-only -q)",
-      "Bash(python -m pytest tests/test_risk.py tests/test_imbalance.py tests/test_order_blocks.py tests/test_strategies.py tests/test_market_structure.py tests/test_liquidity.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_risk.py tests/test_imbalance.py tests/test_order_blocks.py tests/test_strategies.py tests/test_market_structure.py tests/test_liquidity.py -v --tb=short)",
+      "Bash(./docker-start.sh:*)",
+      "Bash(docker run:*)",
+      "Bash(docker exec:*)",
+      "Bash(python -m pytest tests/ -v --tb=short --ignore=tests/test_data_fetchers.py --ignore=tests/test_live_trading.py)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/test_data_fetchers.py::TestRetryLogic -v --tb=short)",
+      "Bash(python -m pytest tests/test_strategies.py --cov=strategies --cov-report=term-missing --cov-report=html -v)",
+      "Bash(python -m pytest tests/test_strategies.py --cov=strategies --cov-report=term-missing -q)",
+      "Bash(python -m pytest tests/test_strategies.py --cov=strategies/liquidity_sweep --cov-report=term-missing -q)",
+      "Bash(python -m pytest:*)"
     ],
     "deny": [],
     "ask": []
