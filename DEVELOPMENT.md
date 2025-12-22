@@ -1,204 +1,408 @@
 # Fractal Trader — Development Guide
 
-## Project Status (December 2024)
+**Last Updated:** 2024-12-22
+**Status:** Phase 1 Complete (Core), Phase 2 In Progress (Integration)
+**Overall Production Readiness:** 65% (previously estimated 85% - revised after audit)
 
-### Implementation Progress
+---
 
-| Component | File | Status | Tests | Coverage |
-|-----------|------|--------|-------|----------|
-| **Core Detection** |
-| Swing Points | `core/market_structure.py` | ✅ Done | 21 | 97% |
-| Trend Detection | `core/market_structure.py` | ✅ Done | incl. | 97% |
-| BOS/CHoCH | `core/market_structure.py` | ✅ Done | incl. | 97% |
-| Equal Levels | `core/liquidity.py` | ✅ Done | 16 | 98% |
-| Liquidity Sweeps | `core/liquidity.py` | ✅ Done | incl. | 98% |
-| Fair Value Gaps | `core/imbalance.py` | ✅ Done | 17 | 97% |
-| Order Blocks | `core/order_blocks.py` | ✅ Done | 21 | 95% |
-| **Strategies** |
-| Base Strategy | `strategies/base.py` | ✅ Done | - | 81% |
-| Liquidity Sweep | `strategies/liquidity_sweep.py` | ✅ Done | - | 13%* |
-| FVG Fill | `strategies/fvg_fill.py` | ✅ Done | 15 | 88% |
-| BOS + Order Block | `strategies/bos_orderblock.py` | ✅ Done | 16 | 42%* |
-| **Risk Management** |
-| Confidence Scoring | `risk/confidence.py` | ✅ Done | 9 | 100% |
-| Position Sizing | `risk/position_sizing.py` | ✅ Done | 19 | 98% |
-| **Backtesting** |
-| Backtest Runner | `backtesting/runner.py` | ✅ Done | 19 | Docker |
-| **Data Layer** (NEW) |
-| Base Fetcher | `data/fetcher.py` | ✅ Done | 6 | 100% |
-| Hyperliquid Fetcher | `data/hyperliquid_fetcher.py` | ✅ Done | 15 | 90% |
-| CCXT Fetcher | `data/ccxt_fetcher.py` | ✅ Done | 11 | 85% |
-| **Live Trading** (NEW) |
-| Testnet Trader | `live/hyperliquid/testnet.py` | ✅ Done | 7 | 80% |
-| Mainnet Trader | `live/hyperliquid/trader.py` | ✅ Done | 4 | 85% |
-| Trading Config | `live/hyperliquid/config.py` | ✅ Done | 11 | 95% |
-| **Infrastructure** |
-| Docker Environment | `Dockerfile`, `docker-start.sh` | ✅ Done | - | - |
-| MCP Server | `fractal_mcp/` | ✅ Done | - | - |
+## 📊 Honest Project Status
 
-\* Low coverage in strategies is expected - tests focus on public API behavior, not private methods.
+### Component Breakdown
 
-### Test Summary
+| Component | Status | Tests | Coverage | Production Ready? |
+|-----------|--------|-------|----------|-------------------|
+| **Core Detection** | ✅ Complete | 75 | 95-100% | **YES** ✅ |
+| Market Structure | ✅ Done | 21 | 97% | ✅ |
+| Liquidity | ✅ Done | 16 | 98% | ✅ |
+| Imbalance (FVG) | ✅ Done | 17 | 97% | ✅ |
+| Order Blocks | ✅ Done | 21 | 95% | ✅ |
+| **Risk Management** | ✅ Complete | 28 | 98% | **YES** ✅ |
+| Position Sizing | ✅ Done | 19 | 98% | ✅ |
+| Confidence Scoring | ✅ Done | 9 | 100% | ✅ |
+| **Strategies** | ⚠️ Partial | 31 | 13-88% | **NO** ⚠️ |
+| Liquidity Sweep | ⚠️ Logic OK | - | 13% | ❌ Tests needed |
+| FVG Fill | ✅ Done | 15 | 88% | ✅ |
+| BOS + Order Block | ⚠️ Logic OK | 16 | 42% | ❌ Tests needed |
+| **Backtesting** | ✅ Complete | 19 | Docker | **YES** ✅ |
+| VectorBT Runner | ✅ Done | 19 | N/A | ✅ |
+| **Data Layer** | ⚠️ Beta | 32 | 85-90% | **NO** 🚨 |
+| Hyperliquid | ⚠️ Works | 15 | 90% | ❌ No retry logic |
+| CCXT | ⚠️ Works | 11 | 85% | ❌ No retry logic |
+| **Live Trading** | 🚨 Alpha | 22 | 80% | **NO** 🚨 |
+| Testnet | 🚨 Skeleton | 7 | 80% | ❌ Missing safeguards |
+| Mainnet | 🚨 Skeleton | 4 | 85% | ❌ Not validated |
 
-| Metric | Value |
-|--------|-------|
-| **Core tests** | **134 passing** (no Docker required) |
-| **Full suite** | **206 tests** (requires Docker) |
-| **Passing rate** | **100%** (all tests pass) |
-| **Coverage (avg)** | **76%** |
-| **Core modules** | 95-100% coverage |
+### Overall Readiness Assessment
 
-**Test Distribution:**
+| Phase | Readiness | Notes |
+|-------|-----------|-------|
+| **Research & Backtesting** | 85% | ✅ Ready for use |
+| **Paper Trading (Testnet)** | 40% | ⚠️ Needs 2-3 weeks work |
+| **Live Trading (Mainnet)** | 20% | 🚨 Needs 6-8 weeks work |
 
-| Test File | Tests | Docker Required? |
-|-----------|-------|------------------|
-| `test_market_structure.py` | 21 | No |
-| `test_liquidity.py` | 16 | No |
-| `test_imbalance.py` | 17 | No |
-| `test_order_blocks.py` | 21 | No |
-| `test_risk.py` | 28 | No |
-| `test_strategies.py` | 31 | No |
-| `test_backtesting.py` | 19 | **Yes** (vectorbt) |
-| `test_data_fetchers.py` | 32 | **Yes** (hyperliquid) |
-| `test_live_trading.py` | 22 | **Yes** (eth-account) |
+**Previous estimate (85% ready) was based on core completion only.**
+**Revised estimate (65% ready) accounts for integration gaps and production requirements.**
 
-**Running Tests:**
+---
+
+## 🚨 Critical Gaps (Blocking Production)
+
+### Priority 1: MUST FIX (Before ANY Live Trading)
+
+| # | Issue | Impact | Effort | Status |
+|---|-------|--------|--------|--------|
+| 1 | **No Retry Logic in Data Fetchers** | Network timeout = crash | 2-4h | ❌ TODO |
+| 2 | **No State Persistence** | Restart = lost positions | 4-6h | ❌ TODO |
+| 3 | **Strategy Test Coverage 13-42%** | Untested edge cases | 8-12h | ❌ TODO |
+| 4 | **Circuit Breaker Only in Mainnet** | Can't test fail-safes | 2h | ❌ TODO |
+
+### Priority 2: HIGH (Before Mainnet)
+
+| # | Issue | Impact | Effort | Status |
+|---|-------|--------|--------|--------|
+| 5 | **No Portfolio-Level Risk** | Over-exposure risk | 6-8h | ❌ TODO |
+| 6 | **No End-to-End Integration Test** | Unknown system behavior | 4-6h | ❌ TODO |
+| 7 | **No Walk-Forward Validation** | Overfitting risk | 6-8h | ❌ TODO |
+
+### Priority 3: MEDIUM (Nice to Have)
+
+| # | Issue | Impact | Effort | Status |
+|---|-------|--------|--------|--------|
+| 8 | **Unused ConfidenceFactors Class** | Code inconsistency | 4-6h | ❌ TODO |
+| 9 | **No Monte Carlo Simulation** | Can't assess luck vs skill | 4-6h | ❌ TODO |
+| 10 | **No Architecture Decision Records** | Lost context | 2-4h | ❌ TODO |
+
+---
+
+## 🎯 Realistic Timeline
+
+### Current Position
+- ✅ **Core Detection:** Production-ready
+- ✅ **Risk Management:** Production-ready
+- ✅ **Backtesting:** Works well
+- ⚠️ **Strategies:** Logic OK, tests insufficient
+- 🚨 **Live Trading:** Critical gaps
+
+### Path to Production
+
+**Week 1-2: Foundation Hardening**
+```
+Day 1-2:   Retry logic in data fetchers
+Day 3-5:   State persistence (save/load positions)
+Day 6-10:  Strategy test coverage (13% → 70%+)
+Day 11-14: Circuit breakers in testnet
+
+Deliverable: Testnet-ready codebase
+```
+
+**Week 3-4: Integration & Validation**
+```
+Day 15-18: End-to-end integration test
+Day 19-21: Portfolio-level risk controls
+Day 22-28: 7-day testnet run (zero crashes)
+
+Deliverable: Validated testnet system
+```
+
+**Week 5-6: Polish & Monitoring**
+```
+Week 5:  Monitoring dashboard + alerts
+Week 6:  Documentation + disaster recovery
+
+Deliverable: Mainnet-ready system (small capital)
+```
+
+**Total Timeline:** 6-8 weeks to safe mainnet with $50-100
+
+---
+
+## 📚 Documentation Status
+
+### Up-to-Date Documentation ✅
+- `README.md` - Project overview
+- `CONTRIBUTING.md` - Contribution guidelines
+- `AI_DEVELOPMENT.md` - AI assistant guide
+- `DEPLOYMENT_PLAN.md` - Production roadmap
+
+### New Documentation (This Update) 🆕
+- `QUICK_START_GUIDE.md` - Get backtesting running in 15 minutes
+- `TESTING_STRATEGY.md` - How to test without API keys
+- `HAIKU_TASKS.md` - Task delegation guide
+
+### Archive Candidates 📦
+**Move to `docs/archive/`:**
+- `docs/fractal-trader-context.md` - Historical context (keep for reference)
+- Any prototype documents from initial sprints
+- Old TODO lists (if completed)
+
+**Keep in `docs/`:**
+- Current architectural diagrams
+- API documentation
+- User guides
+
+---
+
+## 🏗️ Architecture
+
+### What's Working Well ✅
+
+**1. Separation of Concerns**
+```
+core/          → Pure SMC logic (95-100% coverage) ⭐
+strategies/    → Trading decisions (uses core)
+risk/          → Position sizing (98% coverage) ⭐
+data/          → Market data (90% coverage)
+live/          → Execution layer
+```
+
+**Why this works:** Each layer is independently testable and reusable.
+
+**2. Test-Driven Approach**
+```python
+# Every module has TEST REQUIREMENTS section
+# [ ] test_function_does_x
+# [ ] test_edge_case_y
+```
+
+**Why this works:** Clear testing checklist prevents gaps.
+
+**3. Type Hints & Docstrings**
+```python
+def calculate_position_size(
+    portfolio_value: float,
+    entry_price: float,
+    stop_loss_price: float,
+    confidence_score: int
+) -> float:
+    """Calculate position size based on risk."""
+```
+
+**Why this works:** Self-documenting code, IDE support, fewer bugs.
+
+### What Needs Improvement ⚠️
+
+**1. Strategy Test Coverage**
+```
+Current:  13-42% coverage
+Target:   70%+ coverage
+Reason:   Strategies contain actual trading logic
+```
+
+**2. Data Fetcher Reliability**
+```
+Current:  No retry on network failure
+Target:   3 retries with exponential backoff
+Reason:   Network blips shouldn't crash bot
+```
+
+**3. State Management**
+```
+Current:  In-memory only (lost on restart)
+Target:   Persistent state (JSON file)
+Reason:   Track positions across restarts
+```
+
+---
+
+## 🔧 Development Workflow
+
+### Quick Start
 
 ```bash
-# Core tests only (134 tests, no Docker)
+# Clone and setup
+git clone https://github.com/r464r64r/FractalTrader.git
+cd FractalTrader
+pip install -r requirements.txt
+
+# Run core tests (no Docker needed)
 python -m pytest tests/ -v \
   --ignore=tests/test_backtesting.py \
   --ignore=tests/test_data_fetchers.py \
   --ignore=tests/test_live_trading.py
+# Expected: 134 tests passing
 
-# Full test suite (206 tests, requires Docker)
-./docker-start.sh test
+# Run backtest demo (see QUICK_START_GUIDE.md)
+python examples/backtest_demo.py --symbol BTC --days 90
 ```
 
-**New (Sprint 6 - Haiku):**
-- 32 Data fetcher tests (BaseFetcher, Hyperliquid, CCXT)
-- 22 Live trading tests (config, testnet, mainnet)
-
-**Known Issues:**
-- Hyperliquid/eth-account dependencies may not install correctly outside Docker
-- Full test suite requires Docker environment
-
----
-
-## MVP Roadmap (Updated December 2024)
-
-### Completed Sprints
-
-**Sprint 1-4 (Sonnet):** Core implementation
-- Risk management with confidence scoring
-- Backtesting framework with vectorbt
-- FVG and Order Block detection
-- FVG Fill and BOS+OB strategies
-
-**Sprint 5 (Sonnet):** Test suite
-- 116 tests implemented per TODO_TESTS.md
-- All tests passing
-
-**Sprint 6 (Haiku):** Data Layer & Live Trading
-- Hyperliquid + CCXT data fetchers ✅ Done
-- Testnet integration ✅ Done
-- Live trading on Hyperliquid ✅ Done
-- 54 new tests (100% passing)
-- **MVP COMPLETE**
-
-### Remaining (Post-MVP)
-
-| Priority | Task | Effort | Status | Notes |
-|----------|------|--------|--------|-------|
-| 1 | Portfolio-level risk controls | Medium | 🔧 TODO | Multi-position P&L tracking |
-| 2 | End-to-end integration test | Low | 🔧 TODO | Testnet 24h validation |
-| 3 | Performance monitoring | Low | 🔧 TODO | Dashboard, metrics export |
-| 4 | Multi-exchange support | Medium | 🔧 TODO | Bybit, OKX via CCXT |
-| 5 | Telegram alerts | Low | 🔧 TODO | Trade notifications |
-
-**Removed from MVP:**
-- ❌ Freqtrade integration (replaced by Hyperliquid native SDK)
-- ❌ yfinance/stocks support (postponed post-MVP)
-
-### Post-MVP (Optional)
-
-- Multi-timeframe analysis
-- Cross-exchange strategies (Binance, Bybit via CCXT)
-- Telegram notifications
-- Web dashboard
-- Traditional stocks support (yfinance)
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    DATA SOURCES                             │
-│  Hyperliquid SDK (live, 5000 candles) | CCXT (deep BT)     │
-│                  data/fetcher.py                            │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   CORE DETECTION                            │
-│  market_structure.py │ liquidity.py │ imbalance.py │ OB    │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      STRATEGIES                             │
-│  liquidity_sweep.py │ fvg_fill.py │ bos_orderblock.py      │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   RISK MANAGEMENT                           │
-│         confidence.py │ position_sizing.py                  │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     EXECUTION                               │
-│  backtesting/runner.py (CCXT data) | live/hyperliquid      │
-│  testnet: app.hyperliquid-testnet.xyz (paper trading)      │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Running Tests
+### Full Test Suite
 
 ```bash
-# All tests (requires Docker for backtesting tests)
+# Requires Docker (for vectorbt, hyperliquid dependencies)
 ./docker-start.sh test
+# Expected: 206 tests passing
+```
 
-# Without Docker (skips backtesting tests)
-python -m pytest tests/ -v --ignore=tests/test_backtesting.py
+### Before Committing
 
-# With coverage
-python -m pytest tests/ --cov=core --cov=risk --cov=strategies
+```bash
+# 1. Run tests
+python -m pytest tests/ -v
 
-# Specific module
-python -m pytest tests/test_risk.py -v
+# 2. Check coverage (for modified modules)
+python -m pytest tests/ --cov=strategies --cov-report=term-missing
+
+# 3. Verify no debug statements
+grep -r "print(" *.py | grep -v test_
+grep -r "breakpoint()" *.py
+
+# 4. Type check (optional)
+mypy strategies/ --ignore-missing-imports
 ```
 
 ---
 
-## Development Guidelines
+## 📝 Code Standards
 
-1. **Type hints required** — All functions must have type annotations
-2. **Docstrings required** — Google-style docstrings for public functions
-3. **Test requirements** — Add TEST REQUIREMENTS section to new modules
-4. **Edge cases** — Trading code must handle all edge cases
-5. **No hidden state** — Keep functions pure where possible
+### Type Hints (REQUIRED)
+```python
+def calculate_position_size(
+    portfolio_value: float,
+    entry_price: float,
+    stop_loss: float,
+    confidence: int
+) -> float:
+    """Calculate position size."""
+    # Implementation...
+```
+
+### Docstrings (REQUIRED)
+```python
+def detect_liquidity_sweep(
+    high: pd.Series,
+    low: pd.Series,
+    liquidity_levels: pd.Series,
+    reversal_bars: int = 3
+) -> pd.Series:
+    """
+    Detect liquidity sweeps (stop hunts).
+
+    A sweep occurs when:
+    1. Price exceeds liquidity level
+    2. Price reverses within reversal_bars
+    3. Close returns inside the level
+
+    Args:
+        high: High prices
+        low: Low prices
+        liquidity_levels: Series of liquidity levels
+        reversal_bars: Max bars for reversal (default: 3)
+
+    Returns:
+        Boolean series marking sweep completion bars
+
+    Example:
+        >>> sweeps = detect_liquidity_sweep(
+        ...     data['high'], data['low'], swing_lows
+        ... )
+    """
+```
+
+### Testing (REQUIRED)
+
+**Minimum coverage targets:**
+- `core/` modules: 95%+
+- `strategies/`: 70%+
+- `risk/`: 90%+
+- New features: 80%+
+
+**Test structure:**
+```python
+class TestYourFunction:
+    """Tests for your_function."""
+
+    def test_basic_functionality(self):
+        """Test happy path."""
+        result = your_function(valid_input)
+        assert result == expected
+
+    def test_edge_case_empty_data(self):
+        """Test with empty input."""
+        result = your_function(pd.Series([]))
+        assert result.empty
+
+    def test_invalid_input_raises_error(self):
+        """Test error handling."""
+        with pytest.raises(ValueError):
+            your_function(invalid_input)
+```
 
 ---
 
-## Attribution
+## 🚫 Critical Rules
 
-| Developer | Contributions |
-|-----------|---------------|
-| **Opus** | Foundation: core detection, base strategy, architecture |
-| **Sonnet** | Risk management, backtesting, FVG/OB strategies, tests |
-| **Opus** | Review, merge, documentation consolidation |
+### DO NOT
+- ❌ Modify `core/` without tests
+- ❌ Skip type hints or docstrings
+- ❌ Commit failing tests
+- ❌ Use global state
+- ❌ Test on mainnet without approval
+- ❌ Decrease test coverage
+- ❌ Leave debug statements (`print()`, `breakpoint()`)
+
+### DO
+- ✅ Run tests before committing
+- ✅ Write tests for new code (TDD approach)
+- ✅ Handle edge cases explicitly
+- ✅ Update documentation
+- ✅ Use Docker for backtesting
+- ✅ Follow existing patterns
+- ✅ Ask before major changes
+
+---
+
+## 🎯 Next Sprint: User Experience
+
+**Goal:** Get backtesting working in 15 minutes for new users
+
+**Deliverables:**
+1. `examples/backtest_demo.py` - One-click backtest
+2. `examples/strategy_comparison.py` - Compare all strategies
+3. `examples/backtest_dashboard.py` - Interactive Streamlit UI
+
+**Timeline:** 2-3 days
+
+**See:** `QUICK_START_GUIDE.md` for details
+
+---
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Code style guide
+- Pull request process
+- Testing requirements
+
+---
+
+## 📜 License & Attribution
+
+**License:** MIT (open-source)
+
+**Contributors:**
+- Opus — Core architecture, SMC detection
+- Sonnet — Strategies, risk, tests, integration
+- Haiku — Data processing, reports, test fixtures
+- Community — (your contributions here!)
+
+---
+
+## 🔗 Resources
+
+### Documentation
+- [QUICK_START_GUIDE.md](QUICK_START_GUIDE.md) - Get started fast
+- [TESTING_STRATEGY.md](TESTING_STRATEGY.md) - Testing without API keys
+- [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md) - Production roadmap
+- [HAIKU_TASKS.md](HAIKU_TASKS.md) - Task delegation guide
+
+### External
+- [Smart Money Concepts](docs/archive/fractal-trader-context.md) - SMC theory
+- [vectorbt Documentation](https://vectorbt.dev/)
+- [Hyperliquid Docs](https://hyperliquid.gitbook.io/)
+
+---
+
+**Remember:** This is research software. Never risk money you can't afford to lose.
+
+Production readiness is a journey, not a destination. We're at 65% - let's get to 95% together. 🚀
