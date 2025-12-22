@@ -155,7 +155,7 @@ class TestHyperliquidFetcher:
 
     def test_calculate_start_time(self, fetcher):
         """Test start time calculation."""
-        end_time = int(pd.to_datetime('2024-12-20').timestamp() * 1000)
+        end_time = int(pd.to_datetime('2025-12-20').timestamp() * 1000)
         start = fetcher._calculate_start_time(end_time, '1h', 100)
 
         # 100 hours = 100 * 60 * 60 * 1000 ms
@@ -211,10 +211,10 @@ class TestCCXTFetcher:
 
     def test_fetch_ohlcv_with_since(self, fetcher):
         """Test fetching from specific date."""
-        df = fetcher.fetch_ohlcv('BTC/USDT', '1d', since='2024-12-01', limit=30)
+        df = fetcher.fetch_ohlcv('BTC/USDT', '1d', since='2025-12-01', limit=30)
 
         assert len(df) <= 30
-        assert df.index[0] >= pd.to_datetime('2024-12-01', utc=True)
+        assert df.index[0] >= pd.to_datetime('2025-12-01', utc=True)
 
     def test_different_exchanges(self):
         """Test multiple exchanges work."""

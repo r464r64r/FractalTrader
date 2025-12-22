@@ -99,7 +99,7 @@ class HyperliquidFetcher(BaseFetcher):
             >>> df = fetcher.fetch_ohlcv('BTC', '1h', limit=100)
             >>> df.head()
                                 open    high     low   close    volume
-            2024-12-01 00:00:00  42000  42100  41900  42050  1234.56
+            2025-12-01 00:00:00  42000  42100  41900  42050  1234.56
         """
         # Validate inputs
         if timeframe not in self.TIMEFRAME_MAP:

@@ -263,7 +263,7 @@ class HyperliquidFetcher(BaseFetcher):
             >>> df = fetcher.fetch_ohlcv('BTC', '1h', limit=100)
             >>> df.head()
                                 open    high     low   close    volume
-            2024-12-01 00:00:00  42000  42100  41900  42050  1234.56
+            2025-12-01 00:00:00  42000  42100  41900  42050  1234.56
         """
         # Validate inputs
         if timeframe not in self.TIMEFRAME_MAP:
@@ -563,7 +563,7 @@ class TestHyperliquidFetcher:
 
     def test_since_parameter(self, fetcher):
         """Test using 'since' parameter."""
-        since = '2024-12-01'
+        since = '2025-12-01'
         df = fetcher.fetch_ohlcv('BTC', '1h', since=since)
 
         # First candle should be after 'since' date
@@ -912,7 +912,7 @@ class TestCCXTFetcher:
     def test_pagination_for_large_dataset(self, fetcher):
         """Test pagination works for large date ranges."""
         # Fetch 1 week of 1h data (168 candles)
-        df = fetcher.fetch_ohlcv('BTC/USDT', '1h', since='2024-12-01', limit=None)
+        df = fetcher.fetch_ohlcv('BTC/USDT', '1h', since='2025-12-01', limit=None)
 
         # Should have multiple batches
         assert len(df) > 100

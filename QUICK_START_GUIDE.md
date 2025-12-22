@@ -122,7 +122,7 @@ python examples/backtest_demo.py
 **Expected output:**
 ```
 📊 Loaded 2160 bars of data
-   Period: 2024-09-23 to 2024-12-22
+   Period: 2024-09-23 to 2025-12-22
 
 🔍 Testing strategy: liquidity_sweep
 
