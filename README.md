@@ -24,7 +24,7 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 
 ---
 
-## 🎯 Current Status (December 2024)
+## 🎯 Current Status (December 2025)
 
 | What You Can Do | Status | Timeline |
 |-----------------|--------|----------|
@@ -523,7 +523,7 @@ Free to use, modify, and distribute. No warranty provided.
 
 ## 📢 Status Updates
 
-**December 22, 2024:**
+**December 22, 2025:**
 - ✅ Phase 1 complete (Core + Backtesting)
 - 🔄 Phase 2 in progress (Integration)
 - 📊 Overall: 65% production-ready
