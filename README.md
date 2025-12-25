@@ -24,27 +24,34 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 
 ---
 
-## 🎯 Current Status (December 2025)
+## 🎯 Current Status (Sprint 1)
 
-| What You Can Do | Status | Timeline |
-|-----------------|--------|----------|
-| **Backtest strategies** | ✅ Ready | Now |
-| **Compare performance** | ✅ Ready | Now |
-| **Paper trade (testnet)** | ⚠️ Beta | 2-3 weeks |
-| **Live trade (small $)** | 🚨 Alpha | 6-8 weeks |
+**Sprint:** Jupyter Fractal Viewer (Dec 24 - Jan 6, 2025)
+**Progress:** [Track live on project board](https://github.com/r464r64r/FractalTrader/projects)
+
+| What You'll Have | Timeline |
+| ---------------- | -------- |
+| **Interactive Jupyter analysis** | Jan 6 (Sprint 1) |
+| **Live market dashboard** | Jan 20 (Sprint 2) |
+| **Paper trading bot** | Feb 3 (Sprint 3) |
+| **Production infrastructure** | Feb 17 (Sprint 4) |
+| **Tribal weather map** | Mar 3 (Sprint 5) |
+| **Live trading (mainnet)** | Mar 17 (Sprint 6) |
 
 ### Component Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Core SMC Detection** | ✅ Production | 95-100% test coverage |
-| **Risk Management** | ✅ Production | 98% test coverage |
-| **Backtesting** | ✅ Production | vectorbt integration |
-| **Strategies** | ⚠️ Beta | Logic solid, tests needed |
-| **Data Layer** | ⚠️ Beta | Works, needs retry logic |
-| **Live Trading** | 🚨 Alpha | Testnet only, critical gaps |
+| Component | Coverage | Production Ready |
+| --------- | -------- | ---------------- |
+| Core SMC Detection | 95-100% | ✅ |
+| Risk Management | 98% | ✅ |
+| Backtesting | Good | ✅ |
+| Strategies | 13-88% | ⚠️ In Progress |
+| Data Layer | Works | ⚠️ Needs retry logic |
+| Live Trading | Alpha | 🚨 Sprint 3-6 |
+| **Jupyter UI** | 0% | 🚧 **Sprint 1 (NOW)** |
+| **Tribal Weather** | 0% | 🚧 Sprint 5 |
 
-**Overall Readiness:** 65% (research/backtest ready, production needs work)
+**Overall:** 65% production-ready → **100% by Mar 17, 2025**
 
 ---
 
@@ -284,39 +291,105 @@ python -m pytest tests/ -v \
 ## 🛣️ Roadmap
 
 ### ✅ Phase 1: Foundation (Complete)
+
 - [x] Core SMC detection (95-100% coverage)
 - [x] Risk management with confidence scoring
 - [x] Backtesting framework (vectorbt)
 - [x] 3 trading strategies
 - [x] Comprehensive test suite (206 tests)
 
-### 🔄 Phase 2: Integration (Current - 60% Complete)
-- [ ] Retry logic in data fetchers
-- [ ] State persistence (position tracking)
-- [ ] Strategy test coverage (13% → 70%+)
-- [ ] Circuit breakers (testnet)
-- [ ] End-to-end integration tests
+### 🔄 Current: Sprint-Based Development
 
-**Timeline:** 2-3 weeks
+**Q1 2025 Goal:** Production-ready trading system with tribal intelligence
 
-### 📋 Phase 3: Production (Next)
-- [ ] Portfolio-level risk controls
-- [ ] 7-day testnet validation
-- [ ] Monitoring dashboard
-- [ ] Telegram alerts
-- [ ] Disaster recovery procedures
+**Sprints 1-6** (Dec 2024 - Mar 2025):
 
-**Timeline:** 4-6 weeks after Phase 2
+1. ✅ Jupyter Fractal Viewer (Interactive analysis)
+2. ⏳ Live Market Dashboard (Real-time monitoring)
+3. ⏳ Paper Trading Bot (Autonomous testnet trading)
+4. ⏳ Production Hardening (Robustness & monitoring)
+5. ⏳ Tribal Weather MVP (Ecosystem intelligence)
+6. ⏳ Live Trading System (Mainnet deployment)
 
-### 🚀 Phase 4: Scale
-- [ ] Multi-exchange support (Binance, Bybit)
-- [ ] Advanced strategies
-- [ ] ML-based confidence scoring
-- [ ] Web dashboard
+**After Q1:** Multi-exchange, advanced strategies, ML integration
 
-**Timeline:** Q1 2025
+**See:** [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md) for detailed timeline
 
-**See:** [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md) for details
+---
+
+## 📅 Development Rhythm
+
+### Sprint-Based Delivery
+
+FractalTrader follows **2-week sprints** with mandatory deliverables.
+
+**Philosophy:** Ship or Die 🚢💀
+
+- Every sprint = 1 clickable deliverable
+- No extensions (cut scope instead)
+- Always releasable
+
+### Current Sprint
+
+**Sprint 1: Jupyter Fractal Viewer** (Dec 24 - Jan 6, 2025)
+
+**Goal:** Interactive multi-timeframe analysis with SMC overlay
+
+**Deliverable:**
+
+```python
+# notebooks/fractal_viewer.ipynb
+from fractal_trader import FractalDashboard
+
+dashboard = FractalDashboard(
+    pair='BTC/USDT',
+    timeframes=['4h', '1h', '15m']
+)
+dashboard.show()  # Interactive 3-panel chart with order blocks
+```
+
+**Progress:** [Track on project board](https://github.com/r464r64r/FractalTrader/projects)
+
+### Next 5 Sprints
+
+| Sprint | Dates | Deliverable | Status |
+| ------ | ----- | ----------- | ------ |
+| **2** | Jan 7-20 | Live Market Dashboard | Planned |
+| **3** | Jan 21-Feb 3 | Paper Trading Bot | Planned |
+| **4** | Feb 4-17 | Production Hardening | Planned |
+| **5** | Feb 18-Mar 3 | Tribal Weather MVP | Planned |
+| **6** | Mar 4-17 | Live Trading (Mainnet) | Planned |
+
+**See:** [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md) for full 12-week plan
+
+### Release Schedule
+
+- **Sprint releases:** Every 2 weeks (v0.X.0-sprint-N)
+- **Production releases:** Every 4-6 weeks (v0.X.0)
+- **Always releasable:** Main branch always works
+
+### How to Follow Progress
+
+**GitHub Project Board:**
+https://github.com/r464r64r/FractalTrader/projects
+
+**Columns:**
+
+```text
+💡 Ideas → 🧠 Analysis → 🔬 Research → 🔨 Implementation → 👀 Review → ✅ Done
+```
+
+**Sprint Updates:**
+
+- Daily async updates on sprint issue
+- Demo every 2 weeks (end of sprint)
+- Retrospective + planning
+
+### Documentation
+
+- **Sprint Framework:** [docs/SPRINT_FRAMEWORK.md](docs/SPRINT_FRAMEWORK.md)
+- **Q1 Roadmap:** [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md)
+- **Workflow:** [.github/WORKFLOW.md](.github/WORKFLOW.md)
 
 ---
 
