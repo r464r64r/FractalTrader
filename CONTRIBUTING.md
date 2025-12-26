@@ -57,15 +57,39 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed architecture.
 
 ## 📋 How to Contribute
 
+### Sprint-Based Workflow
+
+**FractalTrader follows 2-week sprints with deliverables every sprint.**
+
+**Current Sprint:** Sprint 1 - Jupyter Fractal Viewer (Dec 24 - Jan 6, 2025)
+
+See active sprint: https://github.com/r464r64r/FractalTrader/issues?q=is%3Aissue+is%3Aopen+label%3Asprint-1
+
 ### 1. Find an Issue
 
-Check our [issue tracker](https://github.com/r464r64r/FractalTrader/issues) for:
-- `good first issue` — beginner-friendly tasks
-- `help wanted` — areas needing contributors
-- `bug` — reported bugs
-- `enhancement` — feature requests
+**Priority: Sprint issues first!**
 
-### 2. Fork & Branch
+Check our [issue tracker](https://github.com/r464r64r/FractalTrader/issues) for:
+- `sprint-1` — Current sprint tasks (HIGH PRIORITY)
+- `research` — Research tasks
+- `implementation` — Coding tasks
+- `good first issue` — Beginner-friendly tasks
+- `bug` — Reported bugs
+
+**Issue templates available:**
+- 💡 Feature Idea — New feature proposals
+- 🔬 Research Task — Investigation work
+- 🔨 Implementation Task — Coding work
+- 🗓️ Sprint Planning — Sprint structure
+
+### 2. Comment Before Starting
+
+**Before you start work:**
+1. Comment on the issue: "I'll work on this"
+2. Wait for maintainer acknowledgment (avoid duplicate work)
+3. Ask questions if anything is unclear
+
+### 3. Fork & Branch
 
 ```bash
 # Fork the repository on GitHub, then:

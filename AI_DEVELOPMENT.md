@@ -8,17 +8,19 @@ Guidelines for AI assistants (Claude, GPT, Copilot, etc.) working on FractalTrad
 
 **FractalTrader** is an open-source algorithmic trading system based on **Smart Money Concepts (SMC)** for cryptocurrency markets.
 
-**Current Status:** Phase 1 Complete (85% production-ready)
+**Current Status:** Sprint 1 - Jupyter Fractal Viewer (Dec 24 - Jan 6, 2025)
 
 | Component | Status | Coverage |
 |-----------|--------|----------|
 | Core SMC Detection | ✅ Production | 95-100% |
-| Trading Strategies | ✅ Production | 79% |
+| Trading Strategies | ⚠️ In Progress | 79% |
 | Risk Management | ✅ Production | 98% |
-| Data Layer | ✅ Complete | 90% |
-| Live Trading | ⚠️ Testnet Only | 80% |
+| Data Layer | ⚠️ Needs retry logic | 90% |
+| Jupyter UI | 🚧 Sprint 1 (NOW) | 0% |
+| Live Trading | 🚨 Sprint 3-6 | 80% |
 
-**Next Phase:** Testnet validation (24h run + monitoring)
+**Development Model:** 2-week sprints with mandatory deliverables (Ship or Die 🚢💀)
+**See:** [docs/SPRINT_FRAMEWORK.md](docs/SPRINT_FRAMEWORK.md) | [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md)
 
 ---
 
@@ -27,11 +29,13 @@ Guidelines for AI assistants (Claude, GPT, Copilot, etc.) working on FractalTrad
 **Read these FIRST:**
 
 | Document | Purpose | When to Read |
-|----------|---------|--------------|
+| -------- | ------- | ------------ |
 | [README.md](README.md) | Project overview, quick start | Always first |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Architecture, roadmap | For all changes |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Code standards, PR process | Before contributing |
-| [DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md) | Production roadmap | For deployment tasks |
+| [docs/SPRINT_FRAMEWORK.md](docs/SPRINT_FRAMEWORK.md) | Sprint methodology | Before starting work |
+| [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md) | 6-sprint roadmap | For planning |
+| [.github/WORKFLOW.md](.github/WORKFLOW.md) | GitHub workflow | When creating issues |
 
 **Reference:**
 - `strategies/base.py` — Strategy framework
@@ -99,6 +103,25 @@ For detailed SMC theory, see [docs/archive/fractal-trader-context.md](docs/archi
 ---
 
 ## 💻 Development Workflow
+
+### Sprint-Based Development (NEW!)
+
+**FractalTrader now follows 2-week sprints. Work is tracked via GitHub Issues.**
+
+**Before starting any work:**
+
+1. **Check current sprint**: [Issues](https://github.com/r464r64r/FractalTrader/issues) → Filter by `sprint-1` label
+2. **Pick a task**: Choose from `research` or `implementation` labels
+3. **Comment on issue**: Let team know you're working on it
+4. **Create branch**: `git checkout -b feature/issue-15-plotly-research`
+
+**Daily updates:**
+
+- Comment on your issue with progress
+- Move tasks through workflow: `research` → `implementation` → `review` → `done`
+- Ask for help if blocked
+
+**See:** [.github/WORKFLOW.md](.github/WORKFLOW.md) for complete process
 
 ### Quick Start
 
