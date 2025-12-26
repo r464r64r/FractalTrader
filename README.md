@@ -4,8 +4,8 @@
 
 Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and order blocks — the footprints of smart money.
 
-[![Tests](https://img.shields.io/badge/tests-206%20passing-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-76%25-yellow)](tests/)
+[![Tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-90%25-brightgreen)](tests/)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -24,19 +24,36 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 
 ---
 
-## 🎯 Current Status (Sprint 1)
+## 🎯 Current Status
 
-**Sprint:** Jupyter Fractal Viewer (Dec 24 - Jan 6, 2025)
-**Progress:** [Track live on project board](https://github.com/r464r64r/FractalTrader/projects)
+**Sprint 1:** ✅ **COMPLETE** (Dec 26, 2024 - 4 days ahead of schedule!)
+**Next Sprint:** Sprint 2 - Live Market Dashboard (Jan 7-20, 2025)
 
-| What You'll Have | Timeline |
-| ---------------- | -------- |
-| **Interactive Jupyter analysis** | Jan 6 (Sprint 1) |
-| **Live market dashboard** | Jan 20 (Sprint 2) |
-| **Paper trading bot** | Feb 3 (Sprint 3) |
-| **Production infrastructure** | Feb 17 (Sprint 4) |
-| **Tribal weather map** | Mar 3 (Sprint 5) |
-| **Live trading (mainnet)** | Mar 17 (Sprint 6) |
+### Latest: Interactive Jupyter Dashboard 🎉
+
+**Try it now:**
+```bash
+cd notebooks/
+jupyter notebook fractal_viewer.ipynb
+# Run all cells to see multi-timeframe SMC analysis
+```
+
+See [notebooks/README.md](notebooks/README.md) for full guide.
+
+---
+
+### Roadmap
+
+| What You'll Have | Status | Timeline |
+| ---------------- | ------ | -------- |
+| **Interactive Jupyter analysis** | ✅ | Sprint 1 (Complete!) |
+| **Live market dashboard** | 📋 | Jan 20 (Sprint 2) |
+| **Paper trading bot** | 📋 | Feb 3 (Sprint 3) |
+| **Production infrastructure** | 📋 | Feb 17 (Sprint 4) |
+| **Tribal weather map** | 📋 | Mar 3 (Sprint 5) |
+| **Live trading (mainnet)** | 📋 | Mar 17 (Sprint 6) |
+
+---
 
 ### Component Status
 
@@ -45,57 +62,53 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 | Core SMC Detection | 95-100% | ✅ |
 | Risk Management | 98% | ✅ |
 | Backtesting | Good | ✅ |
-| Strategies | 13-88% | ⚠️ In Progress |
-| Data Layer | Works | ⚠️ Needs retry logic |
-| Live Trading | Alpha | 🚨 Sprint 3-6 |
-| **Jupyter UI** | 0% | 🚧 **Sprint 1 (NOW)** |
-| **Tribal Weather** | 0% | 🚧 Sprint 5 |
+| Strategies | 79% | ⚠️ In Progress |
+| Data Layer | 90% | ⚠️ Needs retry logic |
+| **Visualization (NEW!)** | 100% | ✅ |
+| **Confidence Scoring (NEW!)** | 100% | ✅ |
+| Live Trading | 80% | 🚨 Sprint 3-6 |
+| Tribal Weather | 0% | 🚧 Sprint 5 |
 
-**Overall:** 65% production-ready → **100% by Mar 17, 2025**
+**Overall:** 75% production-ready → **100% by Mar 17, 2025**
 
 ---
 
-## 🚀 Quick Start (15 Minutes)
+## 🚀 Quick Start
 
-### 1. Install
+### Option 1: Interactive Jupyter Dashboard (NEW! ⭐)
 
 ```bash
+# 1. Clone and install
 git clone https://github.com/r464r64r/FractalTrader.git
 cd FractalTrader
-
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
+
+# 2. Launch Jupyter notebook
+cd notebooks/
+jupyter notebook fractal_viewer.ipynb
+
+# 3. Run all cells (Kernel → Restart & Run All)
 ```
 
-### 2. Generate Sample Data
+**You'll see:**
+- 3-panel synchronized chart (H4/H1/M15)
+- Auto-detected order blocks (green/red zones)
+- Confidence scoring (75/100 ✓ ENTRY example)
+- Interactive zoom/pan/hover
+
+**Full guide:** [notebooks/README.md](notebooks/README.md)
+
+---
+
+### Option 2: Python API
 
 ```bash
-# Create sample BTC data (no API needed)
-python3 << 'EOF'
-import pandas as pd
-import numpy as np
-from datetime import datetime
-
-np.random.seed(42)
-dates = pd.date_range(end=datetime.now(), periods=90*24, freq='1h')
-returns = np.random.randn(len(dates)) * 0.02 + 0.0001
-price = 30000 * np.exp(np.cumsum(returns))
-
-data = pd.DataFrame({
-    'open': price * (1 + np.random.randn(len(dates)) * 0.005),
-    'high': price * (1 + np.abs(np.random.randn(len(dates)) * 0.01)),
-    'low': price * (1 - np.abs(np.random.randn(len(dates)) * 0.01)),
-    'close': price,
-    'volume': np.random.randint(100, 10000, len(dates))
-}, index=dates)
-
-data.to_csv('data/samples/btc_90d.csv')
-print(f"✅ Generated {len(data)} bars")
-EOF
+# 1. Install
+git clone https://github.com/r464r64r/FractalTrader.git
+cd FractalTrader
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### 3. Run Your First Backtest
