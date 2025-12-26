@@ -7,7 +7,6 @@ import logging
 from datetime import datetime, timezone
 
 from strategies.liquidity_sweep import LiquiditySweepStrategy
-from strategies.imbalance import calculate_confidence_factors
 
 
 logger = logging.getLogger(__name__)
@@ -271,14 +270,14 @@ class SetupDetector:
         try:
             primary_df = data[self.primary_timeframe]
 
-            # Use confidence factors from strategy
-            factors = calculate_confidence_factors(
-                df=primary_df,
-                entry_type=signal_type.lower()
-            )
+            # Use strategy's confidence calculation
+            # Find most recent signal
+            last_idx = len(primary_df) - 1
 
-            # Base confidence from factors
-            confidence = factors['total_score']
+            confidence = self.strategy.calculate_confidence(
+                data=primary_df,
+                signal_idx=last_idx
+            )
 
             # Add HTF alignment bonus
             htf_bias = self._get_htf_bias(data)
@@ -293,7 +292,7 @@ class SetupDetector:
 
         except Exception as e:
             logger.error(f"Error calculating confidence: {e}")
-            return 0
+            return 70  # Default moderate confidence
 
     def _get_htf_bias(self, data: Dict[str, pd.DataFrame]) -> Optional[str]:
         """
