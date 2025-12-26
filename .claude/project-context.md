@@ -11,8 +11,13 @@
 **Track:** https://github.com/r464r64r/FractalTrader/issues/13
 
 **Active Tasks:**
-- #15 - Research: Plotly multi-timeframe synchronization
-- #16 - Implement FractalDashboard core class
+- [#15](https://github.com/r464r64r/FractalTrader/issues/15) - Research: Plotly multi-timeframe synchronization
+- [#16](https://github.com/r464r64r/FractalTrader/issues/16) - Implement FractalDashboard core class
+
+**Technical Decisions (Sprint 1):**
+- Data source: Cached historical (`data/samples/btc_90d.csv`)
+- Testing approach: Visual validation + unit tests for logic
+- Scope: Static analysis only (no live updates until Sprint 2)
 
 **Next Sprint:** Sprint 2 - Live Market Dashboard (Jan 7-20)
 
