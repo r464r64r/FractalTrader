@@ -266,6 +266,73 @@ class TestFractalDashboardRowHeights:
         assert sum(heights) == pytest.approx(1.0)
 
 
+class TestFractalDashboardConfidence:
+    """Test confidence calculation functionality."""
+
+    def test_calculate_confidence_success(self, sample_csv):
+        """Test successful confidence calculation."""
+        dashboard = FractalDashboard(
+            pair='BTC/USDT',
+            timeframes=['4h', '1h']
+        )
+        dashboard.load_data(sample_csv)
+        dashboard.detect_patterns()
+
+        # Get first bullish OB on 1h
+        bullish_ob, _ = dashboard.order_blocks['1h']
+        if len(bullish_ob) > 0:
+            ob_index = bullish_ob.index[0]
+            score, factors = dashboard.calculate_confidence('1h', ob_index, 'bullish')
+
+            assert isinstance(score, int)
+            assert 0 <= score <= 100
+            assert hasattr(factors, 'calculate_score')
+
+    def test_calculate_confidence_before_detect_patterns(self, sample_csv):
+        """Test error when calling before detect_patterns."""
+        dashboard = FractalDashboard(pair='BTC/USDT', timeframes=['1h'])
+        dashboard.load_data(sample_csv)
+
+        with pytest.raises(RuntimeError, match="Must call detect_patterns"):
+            dashboard.calculate_confidence('1h', pd.Timestamp('2024-01-01'), 'bullish')
+
+    def test_calculate_confidence_invalid_timeframe(self, sample_csv):
+        """Test error with invalid timeframe."""
+        dashboard = FractalDashboard(pair='BTC/USDT', timeframes=['1h'])
+        dashboard.load_data(sample_csv)
+        dashboard.detect_patterns()
+
+        with pytest.raises(ValueError, match="Timeframe"):
+            dashboard.calculate_confidence('4h', pd.Timestamp('2024-01-01'), 'bullish')
+
+    def test_calculate_confidence_invalid_ob_index(self, sample_csv):
+        """Test error with non-existent OB."""
+        dashboard = FractalDashboard(pair='BTC/USDT', timeframes=['1h'])
+        dashboard.load_data(sample_csv)
+        dashboard.detect_patterns()
+
+        # Use a timestamp that definitely doesn't exist
+        with pytest.raises(ValueError, match="Order block"):
+            dashboard.calculate_confidence('1h', pd.Timestamp('2020-01-01'), 'bullish')
+
+    def test_render_with_confidence_panel(self, sample_csv):
+        """Test rendering with confidence panel."""
+        dashboard = FractalDashboard(pair='BTC/USDT', timeframes=['1h'])
+        dashboard.load_data(sample_csv)
+        dashboard.detect_patterns()
+
+        bullish_ob, _ = dashboard.order_blocks['1h']
+        if len(bullish_ob) > 0:
+            ob_index = bullish_ob.index[0]
+            fig = dashboard.render(
+                show_confidence_for=('1h', ob_index, 'bullish')
+            )
+
+            assert fig is not None
+            # Should have confidence annotation
+            assert len(fig.layout.annotations) > 0
+
+
 class TestFractalDashboardIntegration:
     """Integration tests for full workflow."""
 
@@ -307,3 +374,26 @@ class TestFractalDashboardIntegration:
             # Allow errors related to display (no browser in CI)
             if "display" not in str(e).lower():
                 raise
+
+    def test_full_workflow_with_confidence(self, sample_csv):
+        """Test complete workflow including confidence panel."""
+        dashboard = FractalDashboard(
+            pair='BTC/USDT',
+            timeframes=['4h', '1h', '15m']
+        )
+        dashboard.load_data(sample_csv)
+        dashboard.detect_patterns()
+
+        # Get strongest bullish OB
+        bullish_4h, _ = dashboard.order_blocks['4h']
+        if len(bullish_4h) > 0:
+            strongest = bullish_4h.nlargest(1, 'retest_count').index[0]
+
+            # Calculate confidence
+            score, factors = dashboard.calculate_confidence('4h', strongest, 'bullish')
+            assert isinstance(score, int)
+
+            # Render with confidence panel
+            fig = dashboard.render(show_confidence_for=('4h', strongest, 'bullish'))
+            assert fig is not None
+            assert len(fig.layout.annotations) > 0

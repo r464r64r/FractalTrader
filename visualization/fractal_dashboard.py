@@ -4,8 +4,9 @@ Interactive multi-timeframe dashboard for Jupyter notebooks.
 Provides synchronized 3-panel charts with SMC pattern overlays and confidence scoring.
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -140,11 +141,108 @@ class FractalDashboard:
             )
             self.order_blocks[tf] = (bullish_ob, bearish_ob)
 
+    def calculate_confidence(
+        self,
+        timeframe: str,
+        ob_index: pd.Timestamp,
+        ob_type: str = 'bullish'
+    ) -> Tuple[int, ConfidenceFactors]:
+        """
+        Calculate confidence score for a specific order block setup.
+
+        Args:
+            timeframe: Timeframe of the order block
+            ob_index: Timestamp index of the order block
+            ob_type: 'bullish' or 'bearish'
+
+        Returns:
+            Tuple of (confidence_score, ConfidenceFactors instance)
+
+        Raises:
+            RuntimeError: If called before detect_patterns()
+            ValueError: If timeframe or OB not found
+        """
+        if not self.order_blocks:
+            raise RuntimeError("Must call detect_patterns() before calculate_confidence()")
+
+        if timeframe not in self.order_blocks:
+            raise ValueError(f"Timeframe {timeframe} not found")
+
+        # Get order block data
+        bullish_ob, bearish_ob = self.order_blocks[timeframe]
+        ob_df = bullish_ob if ob_type == 'bullish' else bearish_ob
+
+        if ob_index not in ob_df.index:
+            raise ValueError(f"Order block at {ob_index} not found")
+
+        ob_data = ob_df.loc[ob_index]
+        df = self.data[timeframe]
+
+        # Calculate confidence factors
+        factors = ConfidenceFactors()
+
+        # 1. HTF alignment - check if higher timeframe confirms
+        if len(self.timeframes) > 1:
+            htf_idx = max(0, self.timeframes.index(timeframe) - 1)
+            if htf_idx < self.timeframes.index(timeframe):
+                htf = self.timeframes[htf_idx]
+                htf_bullish, htf_bearish = self.order_blocks[htf]
+                # Simple check: HTF has same direction OBs
+                if ob_type == 'bullish' and len(htf_bullish) > 0:
+                    factors.htf_trend_aligned = True
+                elif ob_type == 'bearish' and len(htf_bearish) > 0:
+                    factors.htf_trend_aligned = True
+
+        # 2. Pattern clean - check if OB hasn't been heavily retested (invalidated)
+        if not ob_data['invalidated']:
+            factors.pattern_clean = True
+
+        # 3. Multiple confluences - retest count as confluence
+        factors.multiple_confluences = min(int(ob_data['retest_count']), 4)
+
+        # 4. Volume spike - check volume at OB formation
+        try:
+            ob_volume = df.loc[ob_index, 'volume']
+            avg_volume = df['volume'].rolling(window=20).mean().loc[ob_index]
+            if ob_volume > avg_volume * 1.5:  # 50% above average
+                factors.volume_spike = True
+        except (KeyError, ValueError):
+            pass
+
+        # 5. Market regime - check if trending
+        # Simple trend check: price above/below 50-period MA
+        try:
+            ma50 = df['close'].rolling(window=50).mean()
+            current_price = df['close'].iloc[-1]
+            ma50_value = ma50.iloc[-1]
+
+            if ob_type == 'bullish' and current_price > ma50_value:
+                factors.trending_market = True
+            elif ob_type == 'bearish' and current_price < ma50_value:
+                factors.trending_market = True
+        except (KeyError, ValueError):
+            pass
+
+        # 6. Low volatility - check ATR (simple version using high-low range)
+        try:
+            atr = (df['high'] - df['low']).rolling(window=14).mean()
+            recent_atr = atr.iloc[-14:].mean()
+            historical_atr = atr.mean()
+
+            if recent_atr < historical_atr * 1.2:  # Within 120% of avg
+                factors.low_volatility = True
+        except (KeyError, ValueError):
+            pass
+
+        score = factors.calculate_score()
+        return score, factors
+
     def render(
         self,
         height: int = 800,
         show_invalidated: bool = False,
-        max_order_blocks: int = 50
+        max_order_blocks: int = 50,
+        show_confidence_for: Optional[Tuple[str, pd.Timestamp, str]] = None
     ) -> go.Figure:
         """
         Create synchronized multi-timeframe chart with SMC overlays.
@@ -153,6 +251,7 @@ class FractalDashboard:
             height: Total figure height in pixels
             show_invalidated: Whether to show invalidated order blocks
             max_order_blocks: Max order blocks to render per timeframe (performance limit)
+            show_confidence_for: Optional tuple (timeframe, ob_timestamp, ob_type) to show confidence panel
 
         Returns:
             Plotly Figure object ready to display
@@ -230,13 +329,18 @@ class FractalDashboard:
         # Hide rangeslider on bottom subplot
         fig.update_xaxes(rangeslider_visible=False)
 
+        # Add confidence panel if requested
+        if show_confidence_for:
+            self._add_confidence_panel(fig, *show_confidence_for)
+
         return fig
 
     def show(
         self,
         height: int = 800,
         show_invalidated: bool = False,
-        max_order_blocks: int = 50
+        max_order_blocks: int = 50,
+        show_confidence_for: Optional[Tuple[str, pd.Timestamp, str]] = None
     ) -> None:
         """
         Render and display dashboard in Jupyter notebook.
@@ -245,11 +349,13 @@ class FractalDashboard:
             height: Total figure height in pixels
             show_invalidated: Whether to show invalidated order blocks
             max_order_blocks: Max order blocks per timeframe
+            show_confidence_for: Optional tuple (timeframe, ob_timestamp, ob_type) to show confidence panel
         """
         fig = self.render(
             height=height,
             show_invalidated=show_invalidated,
-            max_order_blocks=max_order_blocks
+            max_order_blocks=max_order_blocks,
+            show_confidence_for=show_confidence_for
         )
         fig.show()
 
@@ -269,6 +375,100 @@ class FractalDashboard:
             return [0.6, 0.4]  # 60/40 split
         else:  # n == 3
             return [0.4, 0.3, 0.3]  # Top panel gets most space
+
+    def _add_confidence_panel(
+        self,
+        fig: go.Figure,
+        timeframe: str,
+        ob_index: pd.Timestamp,
+        ob_type: str = 'bullish'
+    ) -> None:
+        """
+        Add confidence breakdown panel as annotation.
+
+        Args:
+            fig: Plotly figure to modify
+            timeframe: Timeframe of the order block
+            ob_index: Timestamp of the order block
+            ob_type: 'bullish' or 'bearish'
+        """
+        # Calculate confidence
+        score, factors = self.calculate_confidence(timeframe, ob_index, ob_type)
+
+        # Build text for annotation
+        direction = "BUY" if ob_type == "bullish" else "SELL"
+        signal = "✓ ENTRY" if score >= 70 else "⚠ CAUTION" if score >= 50 else "✗ SKIP"
+        signal_color = "green" if score >= 70 else "orange" if score >= 50 else "red"
+
+        breakdown_lines = [
+            f"<b>Setup: {ob_type.upper()} OB Retest</b>",
+            f"<b>Confidence: {score}/100 {signal}</b>",
+            "",
+            "<b>Breakdown:</b>"
+        ]
+
+        # Add factor breakdown
+        if factors.htf_trend_aligned:
+            breakdown_lines.append("  HTF alignment:  +15 ✓")
+        else:
+            breakdown_lines.append("  HTF alignment:   0 ✗")
+
+        if factors.htf_structure_clean:
+            breakdown_lines.append("  HTF structure:  +15 ✓")
+        else:
+            breakdown_lines.append("  HTF structure:   0 ✗")
+
+        if factors.pattern_clean:
+            breakdown_lines.append("  Pattern clean:  +10 ✓")
+        else:
+            breakdown_lines.append("  Pattern clean:   0 ✗")
+
+        confluence_points = min(factors.multiple_confluences * 5, 20)
+        breakdown_lines.append(f"  Confluences:    +{confluence_points} ({factors.multiple_confluences}x)")
+
+        if factors.volume_spike:
+            breakdown_lines.append("  Volume spike:   +10 ✓")
+        else:
+            breakdown_lines.append("  Volume spike:    0 ✗")
+
+        if factors.volume_divergence:
+            breakdown_lines.append("  Volume div:     +10 ✓")
+        else:
+            breakdown_lines.append("  Volume div:      0 ✗")
+
+        if factors.trending_market:
+            breakdown_lines.append("  Trending:       +10 ✓")
+        else:
+            breakdown_lines.append("  Trending:        0 ✗")
+
+        if factors.low_volatility:
+            breakdown_lines.append("  Low volatility: +10 ✓")
+        else:
+            breakdown_lines.append("  Low volatility:  0 ✗")
+
+        text = "<br>".join(breakdown_lines)
+
+        # Add annotation (top-right corner of first panel)
+        fig.add_annotation(
+            text=text,
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            xanchor="right",
+            yanchor="top",
+            showarrow=False,
+            bgcolor="rgba(0, 0, 0, 0.8)",
+            bordercolor=signal_color,
+            borderwidth=2,
+            borderpad=10,
+            font=dict(
+                family="Courier New, monospace",
+                size=11,
+                color="white"
+            ),
+            align="left"
+        )
 
     def _add_order_blocks(
         self,
