@@ -224,6 +224,42 @@ class TestTestnetTrader:
         # Should not raise
         testnet_trader._trading_iteration()
 
+    def test_testnet_trader_circuit_breaker_drawdown(self, testnet_trader):
+        """Test circuit breaker triggers on excessive drawdown."""
+        # Set starting balance
+        testnet_trader.starting_balance = 100000
+
+        # Mock portfolio value to show 25% loss (exceeds 20% limit)
+        testnet_trader._get_portfolio_value = Mock(return_value=75000)
+
+        # Circuit breaker should trigger
+        result = testnet_trader._check_circuit_breakers()
+        assert result is False
+        assert testnet_trader.circuit_breaker_triggered is True
+
+    def test_testnet_trader_circuit_breaker_trade_count(self, testnet_trader):
+        """Test circuit breaker triggers on excessive trade count."""
+        # Add 51 trades (exceeds 50 limit)
+        testnet_trader.trade_history = [{'trade': i} for i in range(51)]
+
+        # Circuit breaker should trigger
+        result = testnet_trader._check_circuit_breakers()
+        assert result is False
+        assert testnet_trader.circuit_breaker_triggered is True
+
+    def test_testnet_trader_circuit_breaker_normal(self, testnet_trader):
+        """Test circuit breaker allows normal trading."""
+        # Set starting balance
+        testnet_trader.starting_balance = 100000
+
+        # Mock portfolio value showing small profit
+        testnet_trader._get_portfolio_value = Mock(return_value=101000)
+
+        # Circuit breaker should NOT trigger
+        result = testnet_trader._check_circuit_breakers()
+        assert result is True
+        assert testnet_trader.circuit_breaker_triggered is False
+
 
 class TestHyperliquidTrader:
     """Tests for mainnet trader."""

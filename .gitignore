@@ -90,3 +90,10 @@ secrets.json
 .DS_Store
 Thumbs.db
 .claude/settings.local.json
+
+# Trading state files
+.trading_state.json
+.trading_state.json.bak*
+.testnet_state.json
+.testnet_state.json.bak*
+.trading_bot.pid
