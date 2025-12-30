@@ -1,14 +1,18 @@
 # FractalTrader - Jupyter Notebooks
 
-Interactive notebooks for analyzing and visualizing Smart Money Concepts.
+Interactive notebooks for analyzing and trading with Smart Money Concepts.
 
 ---
 
 ## 📓 Available Notebooks
 
-### [fractal_viewer.ipynb](fractal_viewer.ipynb)
+### [fractal_viewer.ipynb](fractal_viewer.ipynb) - Sprint 1 ✅
 
-**Sprint 1 MVP** - Multi-timeframe SMC visualization with confidence scoring
+**Static Analysis** - Multi-timeframe SMC visualization with confidence scoring
+
+### [live_dashboard.ipynb](live_dashboard.ipynb) - Sprint 2 ✅ NEW
+
+**Live Trading** - Real-time market monitoring with automatic setup detection
 
 **What it does:**
 - Loads historical BTC data (90 days of 15m candles)
@@ -36,6 +40,49 @@ jupyter notebook
 - ✅ Confidence breakdown for strongest setup
 - ✅ Interactive zoom/pan controls
 - ✅ Exportable HTML chart
+
+---
+
+### [live_dashboard.ipynb](live_dashboard.ipynb)
+
+**Sprint 2** - Live market dashboard with real-time alerts
+
+**What it does:**
+- Streams live BTC data (updates every 15s)
+- Detects setups in real-time (liquidity sweeps, OB bounces)
+- Triggers visual/audio alerts (confidence >70%)
+- Logs all setups to trade journal
+- Exports journal to CSV
+
+**Quick Start:**
+
+```bash
+# 1. Navigate to notebooks directory
+cd notebooks/
+
+# 2. Launch Jupyter
+jupyter notebook
+
+# 3. Open live_dashboard.ipynb
+
+# 4. Configure settings (symbol, timeframes, etc.)
+
+# 5. Run cells to start live stream
+```
+
+**Configuration:**
+```python
+SYMBOL = 'BTC'              # Trading symbol
+DATA_SOURCE = 'hyperliquid' # Data source
+UPDATE_INTERVAL = 15        # Update frequency (seconds)
+MIN_CONFIDENCE = 70         # Alert threshold (%)
+```
+
+**Expected Output:**
+- 🔴 Live charts updating every 15 seconds
+- 🔔 Visual alerts when setups detected
+- 📊 Real-time statistics dashboard
+- 📝 Trade journal with all setups logged
 
 ---
 
