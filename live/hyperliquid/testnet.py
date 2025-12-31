@@ -14,6 +14,7 @@ from data.hyperliquid_fetcher import HyperliquidFetcher
 from strategies.base import BaseStrategy, Signal
 from risk.position_sizing import calculate_position_size, RiskParameters
 from live.hyperliquid.config import HyperliquidConfig
+from live.state_manager import StateManager
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,8 @@ class HyperliquidTestnetTrader:
     def __init__(
         self,
         config: HyperliquidConfig,
-        strategy: BaseStrategy
+        strategy: BaseStrategy,
+        state_file: str = '.testnet_state.json'
     ):
         """
         Initialize testnet trader.
@@ -43,6 +45,7 @@ class HyperliquidTestnetTrader:
         Args:
             config: HyperliquidConfig with network='testnet'
             strategy: Strategy instance to trade
+            state_file: Path to state file for persistence
 
         Raises:
             ValueError: If config.network != 'testnet'
@@ -73,12 +76,42 @@ class HyperliquidTestnetTrader:
             min_confidence=config.min_confidence
         )
 
-        # State tracking
-        self.open_positions: Dict = {}  # symbol -> position info
-        self.trade_history: List[Dict] = []
+        # Initialize state manager (with persistence)
+        self.state_manager = StateManager(
+            state_file=state_file,
+            auto_save=True,
+            backup_count=5
+        )
+
+        # Load state from previous session (if exists)
+        self.open_positions: Dict = self.state_manager.load_positions()
+        self.trade_history: List[Dict] = self.state_manager.load_trade_history()
         self.is_running = False
 
+        # Set starting balance if not set
+        if self.state_manager.get_starting_balance() == 0:
+            portfolio_value = self._get_portfolio_value()
+            self.state_manager.set_starting_balance(portfolio_value)
+            self.starting_balance = portfolio_value
+            logger.info(f"Set starting balance: ${portfolio_value:,.2f}")
+        else:
+            self.starting_balance = self.state_manager.get_starting_balance()
+            logger.info(
+                f"Resumed session with starting balance: "
+                f"${self.starting_balance:,.2f}"
+            )
+
+        # Circuit breakers (testnet-specific safeguards)
+        self.max_daily_drawdown = 0.20  # Stop if down 20% (more lenient than mainnet)
+        self.max_daily_trades = 50      # Limit number of trades per day
+        self.circuit_breaker_triggered = False
+
         logger.info("TestnetTrader initialized")
+        logger.info(f"Circuit breakers: max_drawdown={self.max_daily_drawdown:.1%}, max_trades={self.max_daily_trades}")
+        if self.open_positions:
+            logger.info(f"Loaded {len(self.open_positions)} open positions from previous session")
+        if self.trade_history:
+            logger.info(f"Loaded {len(self.trade_history)} trades from history")
 
     def run(self, duration_seconds: Optional[int] = None):
         """
@@ -122,8 +155,12 @@ class HyperliquidTestnetTrader:
             self.stop()
 
     def _trading_iteration(self):
-        """Single iteration of trading loop."""
+        """Single iteration of trading loop with circuit breakers."""
         try:
+            # Check circuit breakers first
+            if not self._check_circuit_breakers():
+                return
+
             # 1. Fetch latest data
             data = self.fetcher.fetch_ohlcv(
                 self.config.default_symbol,
@@ -183,6 +220,46 @@ class HyperliquidTestnetTrader:
         except Exception as e:
             logger.error(f"Iteration error: {e}", exc_info=True)
 
+    def _check_circuit_breakers(self) -> bool:
+        """
+        Check if circuit breakers should trigger.
+
+        Returns:
+            True if trading can continue, False if breakers triggered
+        """
+        # Skip if already triggered
+        if self.circuit_breaker_triggered:
+            return False
+
+        # 1. Check drawdown limit
+        current_balance = self._get_portfolio_value()
+        drawdown = (self.starting_balance - current_balance) / self.starting_balance
+
+        if drawdown > self.max_daily_drawdown:
+            logger.critical(
+                f"🛑 CIRCUIT BREAKER TRIGGERED! Drawdown {drawdown:.2%} > "
+                f"{self.max_daily_drawdown:.2%}"
+            )
+            logger.critical(
+                f"Starting balance: ${self.starting_balance:,.2f}, "
+                f"Current balance: ${current_balance:,.2f}"
+            )
+            self.circuit_breaker_triggered = True
+            self.stop()
+            return False
+
+        # 2. Check trade count limit
+        if len(self.trade_history) > self.max_daily_trades:
+            logger.critical(
+                f"🛑 CIRCUIT BREAKER TRIGGERED! Trade count {len(self.trade_history)} > "
+                f"{self.max_daily_trades}"
+            )
+            self.circuit_breaker_triggered = True
+            self.stop()
+            return False
+
+        return True
+
     def _place_order(self, signal: Signal, size: float):
         """
         Place order on Hyperliquid.
@@ -228,7 +305,7 @@ class HyperliquidTestnetTrader:
             logger.info(f"Order placed: {order}")
 
             # Track position
-            self.open_positions[symbol] = {
+            position_data = {
                 'signal': signal,
                 'size': size,
                 'entry_price': limit_price,
@@ -237,9 +314,13 @@ class HyperliquidTestnetTrader:
                 'timestamp': datetime.now(),
                 'order': order
             }
+            self.open_positions[symbol] = position_data
+
+            # Save position to state manager (persists to disk)
+            self.state_manager.save_position(symbol, position_data)
 
             # Record trade
-            self.trade_history.append({
+            trade_data = {
                 'timestamp': datetime.now(),
                 'symbol': symbol,
                 'direction': 'LONG' if is_buy else 'SHORT',
@@ -248,7 +329,11 @@ class HyperliquidTestnetTrader:
                 'stop_loss': signal.stop_loss,
                 'confidence': signal.confidence,
                 'status': 'OPEN'
-            })
+            }
+            self.trade_history.append(trade_data)
+
+            # Save trade to state manager (persists to disk)
+            self.state_manager.save_trade(trade_data)
 
         except Exception as e:
             logger.error(f"Order placement failed: {e}", exc_info=True)
@@ -312,6 +397,10 @@ class HyperliquidTestnetTrader:
         """Stop trading loop."""
         self.is_running = False
         logger.info("Testnet trader stopped")
+
+        # Force save state before stopping
+        self.state_manager.force_save()
+        logger.info("State saved to disk")
 
         # Print summary
         self._print_summary()
