@@ -1,0 +1,104 @@
+# FractalTrader - AWS Production Deployment
+# Optimized for AWS EC2 t3.micro (1GB RAM, 2 vCPU x86_64)
+#
+# IMPORTANT: This config is optimized for 1GB RAM instances
+# Use swap file for stability (setup script creates 2GB swap)
+#
+# Usage:
+#   docker compose -f docker-compose.aws.yml up -d
+#   docker compose -f docker-compose.aws.yml logs -f
+#   docker compose -f docker-compose.aws.yml down
+
+version: "3.8"
+
+services:
+  fractal-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.aws
+    container_name: fractal-trader-aws
+    restart: unless-stopped
+
+    # Environment variables
+    environment:
+      - STRATEGY=${STRATEGY:-liquidity_sweep}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - NETWORK=${NETWORK:-testnet}
+
+      # Python optimizations for low memory
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONMALLOC=malloc
+
+      # Exchange API
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET:-}
+      - HYPERLIQUID_PRIVATE_KEY=${HYPERLIQUID_PRIVATE_KEY:-}
+
+      # Telegram notifications
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+
+      # Risk parameters
+      - BASE_RISK_PERCENT=${BASE_RISK_PERCENT:-0.02}
+      - MAX_POSITION_PERCENT=${MAX_POSITION_PERCENT:-0.05}
+      - MIN_CONFIDENCE=${MIN_CONFIDENCE:-40}
+
+    # Persistent volumes
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - bot-state:/app/.state
+
+    # Resource limits - CRITICAL for 1GB RAM instance
+    # Leave ~256MB for system, ~768MB for container
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'       # Use 1.5 of 2 available vCPUs
+          memory: 768M      # Conservative for 1GB instance
+        reservations:
+          cpus: '0.5'
+          memory: 512M      # Minimum to run
+
+    # Aggressive log rotation (save disk space)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"      # Smaller than default (was 10m)
+        max-file: "2"       # Keep only 2 files (was 3)
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "from pathlib import Path; import sys; sys.exit(0 if Path('.trading_bot.pid').exists() else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Portainer - Optional web UI
+  # WARNING: Uses additional ~100MB RAM
+  # Only enable if you have swap configured
+  portainer:
+    image: portainer/portainer-ce:alpine  # Use alpine (lighter)
+    container_name: portainer-aws
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M      # Portainer is lightweight
+    profiles:
+      - management
+
+volumes:
+  bot-state:
+    name: fractal-trader-state
+  portainer-data:
+    name: portainer-data

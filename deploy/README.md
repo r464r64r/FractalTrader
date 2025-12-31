@@ -7,21 +7,45 @@ Wszystkie pliki i instrukcje potrzebne do deploymentu FractalTrader w chmurze.
 ```
 deploy/
 ├── README.md                      # Ten plik
-├── CLOUD_DEPLOYMENT.md           # Pełny przewodnik deployment
-├── iphone-deployment-guide.md    # Przewodnik deployment z iPhone
-├── oracle-cloud-setup.sh         # Setup script dla Oracle Cloud
-├── quick-deploy.sh               # Szybki deployment (one-liner)
-└── health-check.sh               # Health monitoring script
+├── AWS_DEPLOYMENT.md             # AWS przewodnik (RECOMMENDED!)
+├── AWS_QUICK_START.md            # AWS quick start (15 min)
+├── CLOUD_DEPLOYMENT.md           # Porównanie platform
+├── iphone-deployment-guide.md    # Deployment z iPhone
+├── aws-setup.sh                  # AWS setup script
+├── oracle-cloud-setup.sh         # Oracle Cloud setup
+├── quick-deploy.sh               # Universal deploy script
+└── health-check.sh               # Health monitoring
 ```
 
 ## ⚡ Quick Start
 
-### Metoda 1: Quick Deploy (Rekomendowane)
+### 🏆 Metoda 1: AWS (REKOMENDOWANE!)
 
-Najprostszy sposób - jeden command:
+**Najprostsza i najbardziej niezawodna opcja.**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_REPO/main/deploy/quick-deploy.sh | bash
+# 1. Utwórz EC2 instance (Tokyo, t3.micro)
+# https://console.aws.amazon.com/ec2
+
+# 2. SSH i deploy
+ssh -i your-key.pem ubuntu@YOUR_IP
+curl -sSL https://raw.githubusercontent.com/r464r64r/FractalTrader/main/deploy/aws-setup.sh | bash
+
+# 3. Start bot
+cd FractalTrader
+docker compose -f docker-compose.aws.yml up -d
+```
+
+**Czas: 15 minut | Cost: $0 (12 miesięcy), ~$10/miesiąc (potem)**
+
+📖 **Full guide:** [AWS_QUICK_START.md](./AWS_QUICK_START.md)
+
+---
+
+### Metoda 2: Oracle Cloud (Free Forever, ale trudniejszy setup)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/YOUR_REPO/main/deploy/oracle-cloud-setup.sh | bash
 ```
 
 Ten script:
@@ -105,27 +129,35 @@ Ten script dodatkowo:
 
 ## 🎯 Wybór Platformy Cloud
 
-| Platforma | RAM | CPU | Koszt (rok 1) | Koszt (długo) | Best For |
-|-----------|-----|-----|---------------|---------------|----------|
-| **Oracle Cloud** | 24GB | 4 ARM | $0 | $0 | **Testnet, Development** |
-| AWS Tokyo | 1GB | 2 x86 | $0 | $120 | **Mainnet, Low Latency** |
-| DigitalOcean | 1-2GB | 1 x86 | $72 | $72 | **Simple Setup** |
-| Linode | 1-2GB | 1 x86 | $60 | $60 | **Simple Setup** |
+| Platforma | RAM | CPU | Koszt (rok 1) | Koszt (długo) | Latency | Best For |
+|-----------|-----|-----|---------------|---------------|---------|----------|
+| **AWS Tokyo** ⚡ | 1GB | 2 x86 | **$0** | ~$126/rok | **<5ms** | **Production** |
+| Oracle Cloud | 24GB | 4 ARM | $0 | $0 | ~50ms | Development |
+| DigitalOcean | 1-2GB | 1 x86 | $72/rok | $72/rok | ~30ms | Simple |
+| Linode | 1-2GB | 1 x86 | $60/rok | $60/rok | ~30ms | Simple |
 
-### Rekomendacje
+### 🏆 Rekomendacje 2025
 
-**Testnet / Development:**
+**🥇 AWS Tokyo (ap-northeast-1)** - BEST CHOICE
 ```
-Platform: Oracle Cloud Always Free
-Cost: $0/miesiąc
-RAM: 24GB (overkill, ale za darmo!)
+✅ Najniższa latencja do Hyperliquid (<5ms!)
+✅ Free tier 12 miesięcy
+✅ Enterprise reliability (99.99% SLA)
+✅ Prosty setup (15 min)
+✅ Standardowa architektura (x86_64)
+
+Cost: $0 (rok 1), ~$10/miesiąc (potem)
 ```
 
-**Mainnet / Production:**
+**🥈 Oracle Cloud Always Free** - Budget Option
 ```
-Platform: AWS Tokyo (ap-northeast-1)
-Cost: ~$12/miesiąc
-Latency: <5ms do Hyperliquid
+✅ Free forever ($0/miesiąc)
+✅ 24GB RAM (dużo!)
+⚠️  ARM64 architektura (wymaga buildx)
+⚠️  Wyższa latencja (~50ms)
+⚠️  Setup może być problematyczny
+
+Best for: Testnet, development, jeśli AWS nie opcja
 ```
 
 ## 🛠️ Common Commands
