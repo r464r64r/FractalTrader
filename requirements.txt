@@ -21,6 +21,8 @@ pytest-cov>=4.1.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
 tenacity>=8.2.0
+filelock>=3.13.0
+ratelimit>=2.2.1
 
 # MCP Server
 mcp>=1.0.0

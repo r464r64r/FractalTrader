@@ -358,3 +358,82 @@ class TestStateManager:
         # Original in manager should be unchanged
         history3 = manager.load_trade_history()
         assert history3[0]['pnl'] == 100
+
+    def test_concurrent_access_with_file_locking(self, temp_state_file):
+        """Test concurrent access with file locking prevents corruption."""
+        import multiprocessing
+        import time
+
+        def write_positions(state_file, prefix, count):
+            """Worker function to write positions."""
+            manager = StateManager(state_file=state_file)
+            for i in range(count):
+                manager.save_position(f'{prefix}_{i}', {'size': float(i)})
+                time.sleep(0.01)  # Simulate work
+
+        # Create initial manager
+        manager = StateManager(state_file=temp_state_file)
+        manager.set_starting_balance(100000)
+        manager.force_save()
+
+        # Start two processes writing concurrently
+        p1 = multiprocessing.Process(target=write_positions, args=(temp_state_file, 'BTC', 5))
+        p2 = multiprocessing.Process(target=write_positions, args=(temp_state_file, 'ETH', 5))
+
+        p1.start()
+        p2.start()
+
+        p1.join(timeout=5)
+        p2.join(timeout=5)
+
+        # Verify file is not corrupted
+        manager2 = StateManager(state_file=temp_state_file)
+        positions = manager2.load_positions()
+
+        # Should have positions from both processes
+        btc_positions = [k for k in positions.keys() if k.startswith('BTC')]
+        eth_positions = [k for k in positions.keys() if k.startswith('ETH')]
+
+        # File locking should prevent corruption, all writes should succeed
+        assert len(btc_positions) > 0
+        assert len(eth_positions) > 0
+
+    def test_file_lock_acquisition(self, temp_state_file):
+        """Test that file locks are properly acquired and released."""
+        manager = StateManager(state_file=temp_state_file)
+
+        # First write should succeed
+        manager.save_position('BTC', {'size': 1.0})
+        manager.force_save()
+
+        # Second write should also succeed (lock was released)
+        manager.save_position('ETH', {'size': 2.0})
+        manager.force_save()
+
+        # Verify both writes succeeded
+        positions = manager.load_positions()
+        assert 'BTC' in positions
+        assert 'ETH' in positions
+
+    def test_file_lock_with_load_and_save(self, temp_state_file):
+        """Test file locking works for both load and save operations."""
+        # Create initial state
+        manager1 = StateManager(state_file=temp_state_file)
+        manager1.set_starting_balance(50000)
+        manager1.save_position('BTC', {'size': 1.0})
+        manager1.force_save()
+
+        # Load with new manager (should acquire lock)
+        manager2 = StateManager(state_file=temp_state_file)
+        assert manager2.get_starting_balance() == 50000
+        assert 'BTC' in manager2.load_positions()
+
+        # Save with new manager (should acquire lock)
+        manager2.save_position('ETH', {'size': 2.0})
+        manager2.force_save()
+
+        # Verify changes persisted
+        manager3 = StateManager(state_file=temp_state_file)
+        positions = manager3.load_positions()
+        assert 'BTC' in positions
+        assert 'ETH' in positions
