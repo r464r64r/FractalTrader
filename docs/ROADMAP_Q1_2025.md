@@ -140,40 +140,73 @@ CLI trading bot that:
 **Feb 4 - Feb 17, 2025**
 
 ### 🎯 Goal
-Trading system is robust enough for small-scale live trading ($100-500).
+Trading system is robust enough for small-scale live trading ($100-500). Maximize production readiness from 85% → **95%+**.
 
 ### 📦 Deliverable
 Production-grade infrastructure:
-- Comprehensive error handling (all failure modes)
-- Monitoring dashboard (Grafana/simple web UI)
-- Automated alerting (Telegram notifications)
-- Disaster recovery procedures
-- Load testing results (handle 10 concurrent strategies)
+- **Strategy test coverage:** 13-42% → **70%+** (critical gap)
+- **E2E integration tests:** Full trading loop validated
+- **Portfolio-level risk controls:** Prevent over-concentration
+- **7-day testnet validation:** Zero crashes, 99.9% uptime
+- **Monitoring dashboard:** Real-time observability (Streamlit)
+- **Disaster recovery procedures:** Documented playbooks + scripts
+- **Walk-forward validation:** Strategy robustness testing
 
 ### ✅ Success Criteria
-- [ ] 99.9% uptime in testnet (measured over 10 days)
-- [ ] All failure modes handled gracefully
-- [ ] Alert within 60s of any critical error
-- [ ] Can recover from exchange disconnect, API errors, etc.
-- [ ] Documentation: incident response playbook
+- [ ] **Strategy coverage:** All strategies ≥70% (currently 13-42%)
+- [ ] **E2E tests:** Full trading loop validated, all failure modes handled
+- [ ] **Portfolio risk:** Implemented and tested (prevents over-concentration)
+- [ ] **7-day testnet:** ≥99.9% uptime, zero unhandled crashes
+- [ ] **Monitoring:** Dashboard functional with health checks
+- [ ] **Overall coverage:** ≥95% (currently 92%)
+- [ ] **Production readiness:** ≥95% (currently 85%)
+- [ ] **Test count:** ≥350 tests (currently 311)
 
 ### 🔨 Key Tasks
-1. Implement comprehensive error handling (Sonnet, 3d)
-2. Build monitoring dashboard (Haiku, 2d)
-3. Setup Telegram alerts (Haiku, 1d)
-4. Write disaster recovery procedures (Sonnet, 1d)
-5. Load testing + optimization (Haiku, 2d)
-6. Security audit (API keys, wallet safety) (Sonnet, 1d)
+
+**CRITICAL (Priority 1):**
+1. **Strategy Test Coverage** (10-14h)
+   - Liquidity Sweep: 13% → 70%+ (edge cases, mocking)
+   - BOS Order Block: 42% → 70%+ (HTF/LTF alignment)
+   - FVG Fill: ~40% → 70%+ (gap fill scenarios)
+
+2. **E2E Integration Tests** (6-8h)
+   - Happy path: data → signal → execution → state
+   - Failure modes: disconnect, corruption, circuit breakers
+
+3. **Portfolio-Level Risk Controls** (6-8h)
+   - Max portfolio exposure (20%)
+   - Max correlated exposure (30%)
+   - Position limits (3 concurrent max)
+
+4. **7-Day Testnet Validation** (1h setup + 7 days monitoring)
+   - Continuous run: zero crashes
+   - Daily monitoring: 15 min/day
+   - End analysis: uptime %, trade quality
+
+5. **Monitoring Dashboard** (8-10h)
+   - Streamlit dashboard with 6 panels
+   - Health checks (heartbeat, state integrity, connectivity)
+   - Auto-refresh (30s intervals)
+
+**HIGH (Priority 2):**
+6. **Disaster Recovery** (3-4h) - Incident response playbook + scripts
+7. **Walk-Forward Validation** (6-8h) - Strategy robustness testing
 
 ### 🎁 What Filip Gets
-**URL:** `http://localhost:8080/monitor` (monitoring dashboard)  
-**Action:** See system health, get alerts, trust it won't lose money
+**URL:** `http://localhost:8501` (Streamlit monitoring dashboard)
+**Action:** Watch system health in real-time, trust 95%+ production readiness
+**Docs:** `docs/SPRINT_4_PLAN.md` (comprehensive implementation guide)
+**Checklist:** `docs/SPRINT_4_CHECKLIST.md` (GitHub issue template)
 
 ### 📊 Why Fourth
-- Can't skip to live trading without this
-- Prevents costly mistakes
-- Builds confidence in system
-- Professional-grade infrastructure
+- **Can't skip to live trading without this** - critical gaps must be fixed
+- **No live trading pressure** - Filip's workstation offline, perfect timing
+- **Quality over speed** - maximize robustness before Sprint 6
+- **Prevents costly mistakes** - untested strategies = real losses
+- **Builds unshakeable confidence** - 7-day validation proves stability
+
+**Sprint Motto:** *"Build it bulletproof, because bullets are coming."* 🛡️
 
 ---
 
@@ -283,37 +316,38 @@ Live trading system that:
 
 ### Sprint Velocity
 ```
-Sprint | Planned Tasks | Completed | On-Time | Goal Achieved
--------|---------------|-----------|---------|---------------
-   1   |       6       |     6     |   ✅ YES |     ✅ YES
-   2   |       6       |     6     |   ✅ YES |     ✅ YES
-   3   |       6       |     -     |    -    |       -
-   4   |       6       |     -     |    -    |       -
-   5   |       6       |     -     |    -    |       -
-   6   |       6       |     -     |    -    |       -
--------|---------------|-----------|---------|---------------
- Avg   |      6.0      |    6.0    |  100%   |     100%
+Sprint | Planned Tasks | Completed | On-Time | Goal Achieved | Early By
+-------|---------------|-----------|---------|---------------|----------
+   1   |       6       |     6     |   ✅ YES |     ✅ YES    | 4 days
+   2   |       6       |     6     |   ✅ YES |     ✅ YES    | 24 days
+   3   |       6       |     6     |   ✅ YES |     ✅ YES    | 21 days
+   4   |       7       |     -     |    -    |       -       |   -
+   5   |       6       |     -     |    -    |       -       |   -
+   6   |       6       |     -     |    -    |       -       |   -
+-------|---------------|-----------|---------|---------------|----------
+ Avg   |      6.0      |    6.0    |  100%   |     100%      | 16 days
 ```
 
 **Target:** >80% on-time, >80% goal achieved
-**Current:** 100% (Sprint 1: 4 days early, Sprint 2: 24 days early!)
+**Current:** 100% (Avg 16 days ahead of schedule! 🚀)
 
 ### Deliverable Tracker
 ```
-Sprint | Deliverable                  | Shipped? | Filip Rating (1-10)
--------|------------------------------|----------|--------------------
-   1   | Jupyter Fractal Viewer       |  ✅ YES  |       TBD
-   2   | Live Market Dashboard        |  ✅ YES  |       TBD
-   3   | Paper Trading Bot            |    -     |        -
-   4   | Production Infrastructure    |    -     |        -
-   5   | Tribal Weather MVP           |    -     |        -
-   6   | Live Trading System          |    -     |        -
--------|------------------------------|----------|--------------------
-Total  |                              |   2/6    |     Avg: TBD
+Sprint | Deliverable                  | Shipped? | Date      | Status
+-------|------------------------------|----------|-----------|--------
+   1   | Jupyter Fractal Viewer       |  ✅ YES  | Dec 26    | Complete
+   2   | Live Market Dashboard        |  ✅ YES  | Dec 26    | Complete
+   3   | Paper Trading Bot            |  ✅ YES  | Dec 30    | Complete
+   4   | Production Infrastructure    |  📋 PLAN | -         | Planning
+   5   | Tribal Weather MVP           |    -     | -         | Waiting
+   6   | Live Trading System          |    -     | -         | Waiting
+-------|------------------------------|----------|-----------|--------
+Total  |                              |   3/6    | -         | 50% Done
 ```
 
-**Target:** 6/6 shipped, avg rating >7/10
-**Current:** 2/6 shipped (Sprint 1: Dec 26, Sprint 2: Dec 26 - 24 days early!)
+**Target:** 6/6 shipped by Mar 17, 2025
+**Current:** 3/6 shipped (50% complete, 21 days ahead of schedule! 🚀)
+**Production Readiness:** 85% → Target: 95% (Sprint 4)
 
 ---
 
