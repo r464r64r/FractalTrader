@@ -1,0 +1,97 @@
+# FractalTrader - Production Cloud Deployment
+# Optimized for 24/7 operation on Oracle Cloud / AWS / DigitalOcean
+#
+# Usage:
+#   docker compose -f docker-compose.cloud.yml up -d
+#   docker compose -f docker-compose.cloud.yml logs -f
+#   docker compose -f docker-compose.cloud.yml down
+
+version: "3.8"
+
+services:
+  fractal-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud
+    container_name: fractal-trader-production
+    restart: unless-stopped  # Auto-restart on crash (not on manual stop)
+
+    # Environment variables (override with .env file)
+    environment:
+      # Trading configuration
+      - STRATEGY=${STRATEGY:-liquidity_sweep}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - NETWORK=${NETWORK:-testnet}
+
+      # Python optimization
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+      # Exchange API (if needed for live trading)
+      - BINANCE_API_KEY=${BINANCE_API_KEY:-}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET:-}
+
+      # Hyperliquid (for testnet/mainnet)
+      - HYPERLIQUID_PRIVATE_KEY=${HYPERLIQUID_PRIVATE_KEY:-}
+
+      # Telegram notifications (optional)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+
+      # Risk parameters
+      - BASE_RISK_PERCENT=${BASE_RISK_PERCENT:-0.02}
+      - MAX_POSITION_PERCENT=${MAX_POSITION_PERCENT:-0.05}
+      - MIN_CONFIDENCE=${MIN_CONFIDENCE:-40}
+
+    # Persistent volumes for logs and state
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - bot-state:/app/.state
+
+    # Resource limits (adjust based on your cloud instance)
+    # Oracle Cloud Free Tier: 24GB RAM, 4 OCPU
+    # AWS t3.micro: 1GB RAM, 2 vCPU
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'      # 1 vCPU sufficient for asyncio bot
+          memory: 1G       # Start conservative, increase if needed
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "from pathlib import Path; import sys; sys.exit(0 if Path('.trading_bot.pid').exists() else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Optional: Portainer for web-based container management (iPhone friendly)
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "8000:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    profiles:
+      - management  # Only start with: docker compose --profile management up
+
+volumes:
+  bot-state:
+    name: fractal-trader-state
+  portainer-data:
+    name: portainer-data

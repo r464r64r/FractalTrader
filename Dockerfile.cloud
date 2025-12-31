@@ -1,0 +1,68 @@
+# FractalTrader - Production Cloud Deployment
+# Multi-architecture support: linux/amd64, linux/arm64
+# Optimized for Oracle Cloud Always Free (ARM64) and AWS (x86_64)
+
+FROM python:3.11-slim-bookworm
+
+LABEL maintainer="FractalTrader"
+LABEL description="FractalTrader 24/7 Live Trading Bot"
+LABEL version="1.0.0"
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Production environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies (minimal for production)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user for security
+RUN useradd -m -s /bin/bash -u 1000 trader && \
+    mkdir -p /app /app/logs /app/data && \
+    chown -R trader:trader /app
+
+WORKDIR /app
+
+# Install Python dependencies in optimized layers
+# Layer 1: Core scientific stack (rarely changes)
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    numpy>=1.24.0 \
+    pandas>=2.0.0 \
+    scipy>=1.11.0
+
+# Layer 2: vectorbt (heaviest dependency)
+RUN pip install --no-cache-dir vectorbt>=0.26.0
+
+# Layer 3: All other dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY --chown=trader:trader . .
+
+# Install project in production mode
+RUN pip install --no-cache-dir .
+
+# Switch to non-root user
+USER trader
+
+# Health check (ping bot status)
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "from pathlib import Path; import sys; sys.exit(0 if Path('.trading_bot.pid').exists() else 1)"
+
+# Expose ports (for future monitoring/dashboard)
+EXPOSE 8080
+
+# Default command: Start bot with liquidity_sweep strategy
+# Override with docker-compose or command line
+CMD ["python", "-m", "live.cli", "start", "--strategy", "liquidity_sweep", "--log-level", "INFO"]
