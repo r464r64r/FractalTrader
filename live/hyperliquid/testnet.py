@@ -9,6 +9,7 @@ from eth_account import Account
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
+from ratelimit import limits, sleep_and_retry
 
 from data.hyperliquid_fetcher import HyperliquidFetcher
 from strategies.base import BaseStrategy, Signal
@@ -18,6 +19,24 @@ from live.state_manager import StateManager
 
 
 logger = logging.getLogger(__name__)
+
+
+class TransientError(Exception):
+    """
+    Transient error that should be retried.
+
+    Examples: network timeout, temporary API unavailability, rate limit hit
+    """
+    pass
+
+
+class CriticalError(Exception):
+    """
+    Critical error that should stop trading.
+
+    Examples: invalid credentials, account locked, insufficient funds
+    """
+    pass
 
 
 class HyperliquidTestnetTrader:
@@ -217,8 +236,30 @@ class HyperliquidTestnetTrader:
             # 6. Place order
             self._place_order(latest_signal, position_size)
 
+        except TransientError as e:
+            # Transient errors: network issues, API timeouts
+            logger.warning(f"Transient error, will retry on next iteration: {e}")
+            time.sleep(5)  # Brief pause before continuing
+
+        except CriticalError as e:
+            # Critical errors: stop trading immediately
+            logger.critical(f"🛑 CRITICAL ERROR - Stopping trading: {e}")
+            self.circuit_breaker_triggered = True
+            self.stop()
+
         except Exception as e:
-            logger.error(f"Iteration error: {e}", exc_info=True)
+            # Unknown errors: log and categorize conservatively
+            error_msg = str(e).lower()
+
+            # Check if it's likely a transient error
+            transient_keywords = ['timeout', 'connection', 'network', 'temporary', 'rate limit']
+            if any(keyword in error_msg for keyword in transient_keywords):
+                logger.warning(f"Likely transient error (retrying): {e}")
+                time.sleep(5)
+            else:
+                # Unknown error - log extensively but continue cautiously
+                logger.error(f"Iteration error (unknown type): {e}", exc_info=True)
+                time.sleep(10)  # Longer pause for unknown errors
 
     def _check_circuit_breakers(self) -> bool:
         """
@@ -260,6 +301,8 @@ class HyperliquidTestnetTrader:
 
         return True
 
+    @sleep_and_retry
+    @limits(calls=5, period=1)  # Max 5 order placements per second
     def _place_order(self, signal: Signal, size: float):
         """
         Place order on Hyperliquid.
@@ -336,8 +379,22 @@ class HyperliquidTestnetTrader:
             self.state_manager.save_trade(trade_data)
 
         except Exception as e:
-            logger.error(f"Order placement failed: {e}", exc_info=True)
+            error_msg = str(e).lower()
 
+            # Categorize the error
+            critical_keywords = ['invalid', 'unauthorized', 'forbidden', 'insufficient', 'locked']
+            transient_keywords = ['timeout', 'connection', 'network', 'temporary', 'rate limit', 'unavailable']
+
+            if any(keyword in error_msg for keyword in critical_keywords):
+                raise CriticalError(f"Order placement failed (critical): {e}")
+            elif any(keyword in error_msg for keyword in transient_keywords):
+                raise TransientError(f"Order placement failed (transient): {e}")
+            else:
+                # Unknown error - log but don't stop trading
+                logger.error(f"Order placement failed (unknown): {e}", exc_info=True)
+
+    @sleep_and_retry
+    @limits(calls=10, period=1)  # Max 10 portfolio value checks per second
     def _get_portfolio_value(self) -> float:
         """
         Get current portfolio value.
@@ -357,8 +414,19 @@ class HyperliquidTestnetTrader:
             return account_value
 
         except Exception as e:
-            logger.error(f"Failed to get portfolio value: {e}")
-            return 100000  # Default testnet starting balance
+            error_msg = str(e).lower()
+
+            # Categorize the error
+            transient_keywords = ['timeout', 'connection', 'network', 'temporary', 'unavailable']
+
+            if any(keyword in error_msg for keyword in transient_keywords):
+                # Transient error - use cached value or default
+                logger.warning(f"Transient error fetching portfolio value: {e}")
+                return 100000  # Default testnet starting balance
+            else:
+                # Unknown error - log and use default
+                logger.error(f"Failed to get portfolio value: {e}")
+                return 100000  # Default testnet starting balance
 
     def _calculate_atr(self, data) -> float:
         """Calculate current ATR (Average True Range)."""

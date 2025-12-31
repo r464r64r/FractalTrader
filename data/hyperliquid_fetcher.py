@@ -15,6 +15,7 @@ from tenacity import (
     retry_if_exception_type,
     before_sleep_log
 )
+from ratelimit import limits, sleep_and_retry
 
 from data.fetcher import BaseFetcher
 
@@ -151,6 +152,8 @@ class HyperliquidFetcher(BaseFetcher):
         logger.info(f"Fetched {len(df)} candles for {symbol} {timeframe}")
         return df
 
+    @sleep_and_retry
+    @limits(calls=10, period=1)  # 10 calls per second max
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -306,6 +309,8 @@ class HyperliquidFetcher(BaseFetcher):
         df.index = pd.DatetimeIndex([], name='timestamp')
         return df
 
+    @sleep_and_retry
+    @limits(calls=5, period=1)  # 5 calls per second (less frequent)
     def get_available_symbols(self) -> list[str]:
         """
         Get list of available trading symbols on Hyperliquid.
@@ -321,6 +326,8 @@ class HyperliquidFetcher(BaseFetcher):
             logger.error(f"Failed to fetch symbols: {e}")
             return []
 
+    @sleep_and_retry
+    @limits(calls=10, period=1)  # 10 calls per second max
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),

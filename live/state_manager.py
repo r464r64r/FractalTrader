@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 from dataclasses import dataclass, asdict, field
 from copy import deepcopy
+from filelock import FileLock, Timeout
 
 
 logger = logging.getLogger(__name__)
@@ -261,11 +262,18 @@ class StateManager:
     def _load_or_create_state(self) -> TradingState:
         """Load existing state or create new one."""
         if self.state_file.exists():
+            lock_file = f"{self.state_file}.lock"
+            lock = FileLock(lock_file, timeout=10)
+
             try:
-                with open(self.state_file, 'r') as f:
-                    data = json.load(f)
-                logger.info(f"Loaded state from {self.state_file}")
-                return TradingState.from_dict(data)
+                with lock:
+                    with open(self.state_file, 'r') as f:
+                        data = json.load(f)
+                    logger.info(f"Loaded state from {self.state_file}")
+                    return TradingState.from_dict(data)
+            except Timeout:
+                logger.error(f"Failed to acquire file lock for {self.state_file} (timeout)")
+                logger.warning("Creating new state")
             except Exception as e:
                 logger.error(f"Failed to load state: {e}")
                 logger.warning("Creating new state")
@@ -280,16 +288,22 @@ class StateManager:
 
     def _save_state(self) -> None:
         """Save current state to file."""
+        lock_file = f"{self.state_file}.lock"
+        lock = FileLock(lock_file, timeout=10)
+
         try:
-            # Create backup before saving
-            if self.state_file.exists():
-                self._create_backup()
+            with lock:
+                # Create backup before saving
+                if self.state_file.exists():
+                    self._create_backup()
 
-            # Write state to file
-            with open(self.state_file, 'w') as f:
-                json.dump(self.state.to_dict(), f, indent=2)
+                # Write state to file
+                with open(self.state_file, 'w') as f:
+                    json.dump(self.state.to_dict(), f, indent=2)
 
-            logger.debug(f"State saved to {self.state_file}")
+                logger.debug(f"State saved to {self.state_file}")
+        except Timeout:
+            logger.error(f"Failed to acquire file lock for {self.state_file} (timeout)")
         except Exception as e:
             logger.error(f"Failed to save state: {e}")
 
@@ -329,6 +343,9 @@ class StateManager:
         Returns:
             True if recovery successful
         """
+        lock_file = f"{self.state_file}.lock"
+        lock = FileLock(lock_file, timeout=10)
+
         for i in range(1, self.backup_count + 1):
             backup_path = self.state_file.with_suffix(f'.json.bak{i}')
 
@@ -336,15 +353,19 @@ class StateManager:
                 continue
 
             try:
-                with open(backup_path, 'r') as f:
-                    data = json.load(f)
+                with lock:
+                    with open(backup_path, 'r') as f:
+                        data = json.load(f)
 
-                # Backup is valid, restore it
-                with open(self.state_file, 'w') as f:
-                    json.dump(data, f, indent=2)
+                    # Backup is valid, restore it
+                    with open(self.state_file, 'w') as f:
+                        json.dump(data, f, indent=2)
 
-                logger.info(f"Recovered from backup: {backup_path}")
-                return True
+                    logger.info(f"Recovered from backup: {backup_path}")
+                    return True
+            except Timeout:
+                logger.error(f"Failed to acquire file lock for recovery (timeout)")
+                continue
             except Exception as e:
                 logger.warning(f"Backup {backup_path} corrupted: {e}")
                 continue
