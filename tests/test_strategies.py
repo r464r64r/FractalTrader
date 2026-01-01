@@ -1114,7 +1114,7 @@ class TestLiquiditySweepStrategy:
         # Should work with short period
         assert len(atr) > 0
         # First value NaN, rest should have values
-        assert atr.iloc[0].isna()
+        assert pd.isna(atr.iloc[0])
         assert atr.iloc[2:].notna().all()
 
     def test_atr_calculation_insufficient_data(self):
@@ -1396,7 +1396,7 @@ class TestLiquiditySweepStrategy:
         # Sweep 1 at index 10, Sweep 2 at index 20, Sweep 3 at index 30
         prices = [100] * 5 + [99, 101] + [100] * 3 + \
                  [99, 101] + [100] * 8 + \
-                 [99, 101] + [100] * 20
+                 [99, 101] + [100] * 28
 
         data = pd.DataFrame({
             "open": prices,
@@ -1955,8 +1955,8 @@ class TestBOSOrderBlockStrategyExtended:
         # Invalid index
         conf = strategy.calculate_confidence(sample_ohlcv, 999999)
 
-        # Should return default for trend-following
-        assert conf == 60
+        # Should return default for insufficient data
+        assert conf == 50
 
     def test_retest_happens_at_ob_boundary(self):
         """Test that retest is detected when price touches OB boundary."""
@@ -2137,7 +2137,7 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # Create data with clear swing high
-        prices = list(range(100, 130)) + [128] * 10 + list(range(128, 140))
+        prices = list(range(100, 130)) + [128] * 8 + list(range(128, 140))
 
         data = pd.DataFrame({
             "open": prices,
@@ -2174,7 +2174,7 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # Downtrend with swing lows
-        prices = list(range(150, 120, -1)) + [122] * 10 + list(range(122, 110, -1))
+        prices = list(range(150, 120, -1)) + [122] * 8 + list(range(122, 110, -1))
 
         data = pd.DataFrame({
             "open": prices,

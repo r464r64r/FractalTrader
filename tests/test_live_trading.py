@@ -125,10 +125,10 @@ class TestTestnetTrader:
     @pytest.fixture
     def testnet_trader(self, mock_config, mock_strategy):
         """Create testnet trader with mocks."""
-        with patch('live.hyperliquid.testnet.Account'):
-            with patch('live.hyperliquid.testnet.Info'):
-                with patch('live.hyperliquid.testnet.Exchange'):
-                    with patch('live.hyperliquid.testnet.HyperliquidFetcher'):
+        with patch('live.hl_integration.testnet.Account'):
+            with patch('live.hl_integration.testnet.Info'):
+                with patch('live.hl_integration.testnet.Exchange'):
+                    with patch('live.hl_integration.testnet.HyperliquidFetcher'):
                         trader = HyperliquidTestnetTrader(mock_config, mock_strategy)
                         # Mock the wallet
                         trader.wallet = Mock()
@@ -137,10 +137,10 @@ class TestTestnetTrader:
 
     def test_testnet_trader_initialization(self, mock_config, mock_strategy):
         """Test testnet trader initializes correctly."""
-        with patch('live.hyperliquid.testnet.Account'):
-            with patch('live.hyperliquid.testnet.Info'):
-                with patch('live.hyperliquid.testnet.Exchange'):
-                    with patch('live.hyperliquid.testnet.HyperliquidFetcher'):
+        with patch('live.hl_integration.testnet.Account'):
+            with patch('live.hl_integration.testnet.Info'):
+                with patch('live.hl_integration.testnet.Exchange'):
+                    with patch('live.hl_integration.testnet.HyperliquidFetcher'):
                         trader = HyperliquidTestnetTrader(mock_config, mock_strategy)
                         assert trader.config == mock_config
                         assert trader.strategy == mock_strategy
@@ -155,7 +155,7 @@ class TestTestnetTrader:
         strategy = Mock()
 
         with pytest.raises(ValueError, match="requires network='testnet'"):
-            with patch('live.hyperliquid.testnet.Account'):
+            with patch('live.hl_integration.testnet.Account'):
                 HyperliquidTestnetTrader(config, strategy)
 
     def test_testnet_trader_validates_config(self, mock_strategy):
@@ -167,7 +167,7 @@ class TestTestnetTrader:
         strategy = mock_strategy
 
         with pytest.raises(ValueError, match="private_key is required"):
-            with patch('live.hyperliquid.testnet.Account'):
+            with patch('live.hl_integration.testnet.Account'):
                 HyperliquidTestnetTrader(config, strategy)
 
     def test_testnet_trader_position_limit(self, testnet_trader):
