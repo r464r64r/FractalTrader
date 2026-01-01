@@ -8,7 +8,7 @@ vectorbt>=0.26.0
 
 # Live Trading
 ccxt>=4.0.0
-hyperliquid>=0.1.0
+hyperliquid-python-sdk>=0.21.0
 eth-account>=0.8.0
 
 # Visualization

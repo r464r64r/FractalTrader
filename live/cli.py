@@ -20,8 +20,8 @@ import signal
 from pathlib import Path
 from typing import Optional
 
-from live.hyperliquid.config import HyperliquidConfig
-from live.hyperliquid.testnet import HyperliquidTestnetTrader
+from live.hl_integration.config import HyperliquidConfig
+from live.hl_integration.testnet import HyperliquidTestnetTrader
 from live.state_manager import StateManager
 from live.reporting import PerformanceReporter
 

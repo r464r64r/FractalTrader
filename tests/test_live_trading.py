@@ -4,9 +4,9 @@ import pytest
 from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime
 
-from live.hyperliquid.config import HyperliquidConfig
-from live.hyperliquid.testnet import HyperliquidTestnetTrader
-from live.hyperliquid.trader import HyperliquidTrader
+from live.hl_integration.config import HyperliquidConfig
+from live.hl_integration.testnet import HyperliquidTestnetTrader
+from live.hl_integration.trader import HyperliquidTrader
 from strategies.liquidity_sweep import LiquiditySweepStrategy
 
 

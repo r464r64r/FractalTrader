@@ -52,7 +52,7 @@ RUN pip install --no-cache-dir \
 # Layer 2: Trading dependencies (lighter than vectorbt)
 RUN pip install --no-cache-dir \
     ccxt>=4.0.0 \
-    hyperliquid>=0.1.0 \
+    hyperliquid-python-sdk>=0.21.0 \
     eth-account>=0.8.0 \
     python-dotenv>=1.0.0 \
     loguru>=0.7.0 \

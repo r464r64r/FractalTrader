@@ -4,8 +4,8 @@ import logging
 from typing import Optional
 from hyperliquid.utils import constants
 
-from live.hyperliquid.testnet import HyperliquidTestnetTrader
-from live.hyperliquid.config import HyperliquidConfig
+from live.hl_integration.testnet import HyperliquidTestnetTrader
+from live.hl_integration.config import HyperliquidConfig
 from strategies.base import BaseStrategy
 
 

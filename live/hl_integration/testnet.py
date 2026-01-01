@@ -14,7 +14,7 @@ from ratelimit import limits, sleep_and_retry
 from data.hyperliquid_fetcher import HyperliquidFetcher
 from strategies.base import BaseStrategy, Signal
 from risk.position_sizing import calculate_position_size, RiskParameters
-from live.hyperliquid.config import HyperliquidConfig
+from live.hl_integration.config import HyperliquidConfig
 from live.state_manager import StateManager
 
 

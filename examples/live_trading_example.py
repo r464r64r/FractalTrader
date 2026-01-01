@@ -1,8 +1,8 @@
 """Example: Live trading on Hyperliquid testnet."""
 
 import logging
-from live.hyperliquid.config import HyperliquidConfig
-from live.hyperliquid.testnet import HyperliquidTestnetTrader
+from live.hl_integration.config import HyperliquidConfig
+from live.hl_integration.testnet import HyperliquidTestnetTrader
 from strategies.liquidity_sweep import LiquiditySweepStrategy
 
 # Setup logging
