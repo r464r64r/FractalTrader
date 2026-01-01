@@ -1,0 +1,85 @@
+# FractalTrader - AWS Optimized Production
+# Optimized for AWS EC2 t3.micro (1GB RAM, 2 vCPU)
+# Architecture: x86_64 (standard)
+
+FROM python:3.11-slim-bookworm
+
+LABEL maintainer="FractalTrader"
+LABEL description="FractalTrader - AWS Optimized (1GB RAM)"
+LABEL version="1.0.0"
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Production environment variables + Memory optimizations
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # Python memory optimizations for 1GB RAM
+    PYTHONMALLOC=malloc \
+    MALLOC_TRIM_THRESHOLD_=100000 \
+    MALLOC_MMAP_THRESHOLD_=100000
+
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl \
+    ca-certificates \
+    # Cleanup in same layer to reduce image size
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN useradd -m -s /bin/bash -u 1000 trader && \
+    mkdir -p /app /app/logs /app/data && \
+    chown -R trader:trader /app
+
+WORKDIR /app
+
+# Install Python dependencies in optimized layers
+# Layer 1: Core (lightweight first)
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    numpy>=1.24.0 \
+    pandas>=2.0.0 \
+    scipy>=1.11.0 \
+    # Install with reduced memory usage
+    && pip install --no-cache-dir --no-deps vectorbt>=0.26.0 || \
+       pip install --no-cache-dir vectorbt>=0.26.0
+
+# Layer 2: Trading dependencies (lighter than vectorbt)
+RUN pip install --no-cache-dir \
+    ccxt>=4.0.0 \
+    hyperliquid>=0.1.0 \
+    eth-account>=0.8.0 \
+    python-dotenv>=1.0.0 \
+    loguru>=0.7.0 \
+    tenacity>=8.2.0
+
+# Layer 3: Optional dependencies (skip heavy ones for AWS)
+RUN pip install --no-cache-dir \
+    plotly>=5.17.0 \
+    pytest>=7.4.3 \
+    pytest-cov>=4.1.0
+    # Skip: matplotlib (heavy), numba (heavy), bottleneck (optional)
+
+# Copy application code
+COPY --chown=trader:trader . .
+
+# Install project in production mode
+RUN pip install --no-cache-dir -e .
+
+# Switch to non-root user
+USER trader
+
+# Health check
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "from pathlib import Path; import sys; sys.exit(0 if Path('.trading_bot.pid').exists() else 1)"
+
+# Expose ports
+EXPOSE 8080
+
+# Default command
+CMD ["python", "-m", "live.cli", "start", "--strategy", "liquidity_sweep", "--log-level", "INFO"]
