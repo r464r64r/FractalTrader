@@ -1,23 +1,16 @@
 """Tests for market structure detection."""
 
-import pytest
 import pandas as pd
-import numpy as np
+
 from core.market_structure import (
-    find_swing_points,
-    determine_trend,
     detect_structure_breaks,
-    get_swing_sequence,
+    determine_trend,
     find_recent_swing_level,
+    find_swing_points,
+    get_swing_sequence,
 )
 
 # Import fixtures
-from tests.fixtures.sample_data import (
-    sample_ohlcv,
-    trending_data,
-    downtrending_data,
-    ranging_data,
-)
 
 
 class TestSwingPoints:
@@ -25,22 +18,14 @@ class TestSwingPoints:
 
     def test_finds_swing_highs(self, sample_ohlcv):
         """Swing highs should be found in sample data."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            n=3
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"], n=3)
 
         # Should find multiple swing highs
         assert swing_highs.dropna().count() >= 5
 
     def test_finds_swing_lows(self, sample_ohlcv):
         """Swing lows should be found in sample data."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            n=3
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"], n=3)
 
         # Should find multiple swing lows
         assert swing_lows.dropna().count() >= 5
@@ -48,57 +33,43 @@ class TestSwingPoints:
     def test_swing_high_is_local_maximum(self, sample_ohlcv):
         """Swing highs should be higher than surrounding bars."""
         n = 3
-        swing_highs, _ = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            n=n
-        )
+        swing_highs, _ = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"], n=n)
 
         for idx in swing_highs.dropna().index:
             i = sample_ohlcv.index.get_loc(idx)
             if i >= n and i < len(sample_ohlcv) - n:
                 # Swing high should be higher than n bars on each side
-                assert sample_ohlcv["high"].iloc[i] > sample_ohlcv["high"].iloc[i - n:i].max()
-                assert sample_ohlcv["high"].iloc[i] > sample_ohlcv["high"].iloc[i + 1:i + n + 1].max()
+                assert sample_ohlcv["high"].iloc[i] > sample_ohlcv["high"].iloc[i - n : i].max()
+                assert (
+                    sample_ohlcv["high"].iloc[i]
+                    > sample_ohlcv["high"].iloc[i + 1 : i + n + 1].max()
+                )
 
     def test_swing_low_is_local_minimum(self, sample_ohlcv):
         """Swing lows should be lower than surrounding bars."""
         n = 3
-        _, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            n=n
-        )
+        _, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"], n=n)
 
         for idx in swing_lows.dropna().index:
             i = sample_ohlcv.index.get_loc(idx)
             if i >= n and i < len(sample_ohlcv) - n:
                 # Swing low should be lower than n bars on each side
-                assert sample_ohlcv["low"].iloc[i] < sample_ohlcv["low"].iloc[i - n:i].min()
-                assert sample_ohlcv["low"].iloc[i] < sample_ohlcv["low"].iloc[i + 1:i + n + 1].min()
+                assert sample_ohlcv["low"].iloc[i] < sample_ohlcv["low"].iloc[i - n : i].min()
+                assert (
+                    sample_ohlcv["low"].iloc[i] < sample_ohlcv["low"].iloc[i + 1 : i + n + 1].min()
+                )
 
     def test_swing_period_affects_count(self, sample_ohlcv):
         """Larger period should find fewer swings."""
-        swings_3, _ = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            n=3
-        )
-        swings_10, _ = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            n=10
-        )
+        swings_3, _ = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"], n=3)
+        swings_10, _ = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"], n=10)
 
         # Larger period = fewer swing points
         assert swings_3.dropna().count() >= swings_10.dropna().count()
 
     def test_returns_series_same_index(self, sample_ohlcv):
         """Return series should have same index as input."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         assert swing_highs.index.equals(sample_ohlcv.index)
         assert swing_lows.index.equals(sample_ohlcv.index)
@@ -119,9 +90,7 @@ class TestDetermineTrend:
     def test_identifies_uptrend(self, trending_data):
         """Should identify uptrend from HH/HL sequence."""
         swing_highs, swing_lows = find_swing_points(
-            trending_data["high"],
-            trending_data["low"],
-            n=5
+            trending_data["high"], trending_data["low"], n=5
         )
 
         trend = determine_trend(swing_highs, swing_lows)
@@ -135,9 +104,7 @@ class TestDetermineTrend:
     def test_identifies_downtrend(self, downtrending_data):
         """Should identify downtrend from LH/LL sequence."""
         swing_highs, swing_lows = find_swing_points(
-            downtrending_data["high"],
-            downtrending_data["low"],
-            n=5
+            downtrending_data["high"], downtrending_data["low"], n=5
         )
 
         trend = determine_trend(swing_highs, swing_lows)
@@ -150,11 +117,7 @@ class TestDetermineTrend:
 
     def test_identifies_ranging(self, ranging_data):
         """Should identify ranging/mixed market."""
-        swing_highs, swing_lows = find_swing_points(
-            ranging_data["high"],
-            ranging_data["low"],
-            n=5
-        )
+        swing_highs, swing_lows = find_swing_points(ranging_data["high"], ranging_data["low"], n=5)
 
         trend = determine_trend(swing_highs, swing_lows)
 
@@ -165,10 +128,7 @@ class TestDetermineTrend:
 
     def test_returns_valid_values(self, sample_ohlcv):
         """Trend should only contain -1, 0, or 1."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         trend = determine_trend(swing_highs, swing_lows)
 
@@ -188,15 +148,11 @@ class TestStructureBreaks:
     def test_detects_bullish_bos_in_uptrend(self, trending_data):
         """Should detect bullish BOS in uptrend."""
         swing_highs, swing_lows = find_swing_points(
-            trending_data["high"],
-            trending_data["low"],
-            n=5
+            trending_data["high"], trending_data["low"], n=5
         )
 
         bos_bull, bos_bear, choch = detect_structure_breaks(
-            trending_data["close"],
-            swing_highs,
-            swing_lows
+            trending_data["close"], swing_highs, swing_lows
         )
 
         # Should find some bullish BOS in uptrend
@@ -205,15 +161,11 @@ class TestStructureBreaks:
     def test_detects_bearish_bos_in_downtrend(self, downtrending_data):
         """Should detect bearish BOS in downtrend."""
         swing_highs, swing_lows = find_swing_points(
-            downtrending_data["high"],
-            downtrending_data["low"],
-            n=5
+            downtrending_data["high"], downtrending_data["low"], n=5
         )
 
         bos_bull, bos_bear, choch = detect_structure_breaks(
-            downtrending_data["close"],
-            swing_highs,
-            swing_lows
+            downtrending_data["close"], swing_highs, swing_lows
         )
 
         # Should find some bearish BOS in downtrend
@@ -221,15 +173,10 @@ class TestStructureBreaks:
 
     def test_returns_boolean_series(self, sample_ohlcv):
         """All return values should be boolean series."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         bos_bull, bos_bear, choch = detect_structure_breaks(
-            sample_ohlcv["close"],
-            swing_highs,
-            swing_lows
+            sample_ohlcv["close"], swing_highs, swing_lows
         )
 
         assert bos_bull.dtype == bool
@@ -238,15 +185,10 @@ class TestStructureBreaks:
 
     def test_same_index_as_input(self, sample_ohlcv):
         """Return series should have same index as input."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         bos_bull, bos_bear, choch = detect_structure_breaks(
-            sample_ohlcv["close"],
-            swing_highs,
-            swing_lows
+            sample_ohlcv["close"], swing_highs, swing_lows
         )
 
         assert bos_bull.index.equals(sample_ohlcv.index)
@@ -259,10 +201,7 @@ class TestSwingSequence:
 
     def test_returns_sorted_dataframe(self, sample_ohlcv):
         """Should return chronologically sorted DataFrame."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         seq = get_swing_sequence(swing_highs, swing_lows)
 
@@ -273,10 +212,7 @@ class TestSwingSequence:
 
     def test_contains_both_types(self, sample_ohlcv):
         """Should contain both high and low types."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         seq = get_swing_sequence(swing_highs, swing_lows)
 
@@ -286,10 +222,7 @@ class TestSwingSequence:
 
     def test_lookback_limits_results(self, sample_ohlcv):
         """Lookback parameter should limit results."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         seq_all = get_swing_sequence(swing_highs, swing_lows)
         seq_limited = get_swing_sequence(swing_highs, swing_lows, lookback=3)
@@ -304,10 +237,7 @@ class TestFindRecentSwingLevel:
 
     def test_finds_recent_swing_high(self, sample_ohlcv):
         """Should find most recent swing high before index."""
-        swing_highs, _ = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, _ = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         # Get a point after some swing highs exist
         current_idx = sample_ohlcv.index[-1]
@@ -320,10 +250,7 @@ class TestFindRecentSwingLevel:
 
     def test_returns_none_if_no_prior_swings(self, sample_ohlcv):
         """Should return None if no swings before current index."""
-        swing_highs, _ = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, _ = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         # Use very early index
         early_idx = sample_ohlcv.index[0]

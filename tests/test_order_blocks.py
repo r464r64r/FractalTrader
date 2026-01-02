@@ -1,14 +1,14 @@
 """Tests for Order Block detection."""
-import pytest
+
 import pandas as pd
-import numpy as np
+import pytest
 
 from core.order_blocks import (
-    find_order_blocks,
+    calculate_ob_strength,
     check_ob_retest,
-    get_valid_order_blocks,
+    find_order_blocks,
     get_nearest_order_block,
-    calculate_ob_strength
+    get_valid_order_blocks,
 )
 
 
@@ -20,12 +20,15 @@ def bullish_ob_data():
     # Bullish OB: Last down candle before bullish impulse
     # Bar 3: Down candle (close < open)
     # Bar 4: Bullish impulse (closes much higher)
-    data = pd.DataFrame({
-        "open":  [100, 101, 102, 103, 102, 110, 111, 112, 113, 114],
-        "high":  [101, 102, 103, 104, 103, 111, 112, 113, 114, 115],
-        "low":   [99,  100, 101, 101, 100, 109, 110, 111, 112, 113],
-        "close": [101, 102, 103, 102, 110, 111, 112, 113, 114, 115]
-    }, index=dates)
+    data = pd.DataFrame(
+        {
+            "open": [100, 101, 102, 103, 102, 110, 111, 112, 113, 114],
+            "high": [101, 102, 103, 104, 103, 111, 112, 113, 114, 115],
+            "low": [99, 100, 101, 101, 100, 109, 110, 111, 112, 113],
+            "close": [101, 102, 103, 102, 110, 111, 112, 113, 114, 115],
+        },
+        index=dates,
+    )
 
     return data
 
@@ -38,12 +41,15 @@ def bearish_ob_data():
     # Bearish OB: Last up candle before bearish impulse
     # Bar 3: Up candle (close > open)
     # Bar 4: Bearish impulse (closes much lower)
-    data = pd.DataFrame({
-        "open":  [100, 99, 98, 97, 98, 90, 89, 88, 87, 86],
-        "high":  [101, 100, 99, 99, 99, 91, 90, 89, 88, 87],
-        "low":   [99,  98, 97, 96, 89, 88, 87, 86, 85, 84],
-        "close": [99,  98, 97, 98, 90, 89, 88, 87, 86, 85]
-    }, index=dates)
+    data = pd.DataFrame(
+        {
+            "open": [100, 99, 98, 97, 98, 90, 89, 88, 87, 86],
+            "high": [101, 100, 99, 99, 99, 91, 90, 89, 88, 87],
+            "low": [99, 98, 97, 96, 89, 88, 87, 86, 85, 84],
+            "close": [99, 98, 97, 98, 90, 89, 88, 87, 86, 85],
+        },
+        index=dates,
+    )
 
     return data
 
@@ -58,7 +64,7 @@ class TestFindOrderBlocks:
             bullish_ob_data["high"],
             bullish_ob_data["low"],
             bullish_ob_data["close"],
-            min_impulse_percent=0.05
+            min_impulse_percent=0.05,
         )
 
         assert len(bullish) > 0, "Should detect at least one bullish OB"
@@ -70,7 +76,7 @@ class TestFindOrderBlocks:
             bearish_ob_data["high"],
             bearish_ob_data["low"],
             bearish_ob_data["close"],
-            min_impulse_percent=0.05
+            min_impulse_percent=0.05,
         )
 
         assert len(bearish) > 0, "Should detect at least one bearish OB"
@@ -79,16 +85,18 @@ class TestFindOrderBlocks:
         """Bullish OB should be a down candle (close < open)."""
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 101, 103, 102, 110],  # Bar 3 is down candle
-            "high":  [101, 102, 104, 103, 111],
-            "low":   [99,  100, 102, 101, 109],
-            "close": [101, 102, 103, 102, 110]  # Close[3]=102 < Open[3]=103
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 103, 102, 110],  # Bar 3 is down candle
+                "high": [101, 102, 104, 103, 111],
+                "low": [99, 100, 102, 101, 109],
+                "close": [101, 102, 103, 102, 110],  # Close[3]=102 < Open[3]=103
+            },
+            index=dates,
+        )
 
         bullish, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.05
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.05
         )
 
         for idx, ob in bullish.iterrows():
@@ -101,16 +109,18 @@ class TestFindOrderBlocks:
         """Bearish OB should be an up candle (close > open)."""
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 99, 97, 97, 89],  # Bar 3 is up candle
-            "high":  [101, 100, 99, 99, 90],
-            "low":   [99,  98, 96, 96, 88],
-            "close": [99,  98, 97, 98, 89]  # Close[3]=98 > Open[3]=97
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 99, 97, 97, 89],  # Bar 3 is up candle
+                "high": [101, 100, 99, 99, 90],
+                "low": [99, 98, 96, 96, 88],
+                "close": [99, 98, 97, 98, 89],  # Close[3]=98 > Open[3]=97
+            },
+            index=dates,
+        )
 
         _, bearish = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.08
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.08
         )
 
         for idx, ob in bearish.iterrows():
@@ -123,23 +133,24 @@ class TestFindOrderBlocks:
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
         # Small impulse: only 2% move
-        data = pd.DataFrame({
-            "open":  [100, 101, 103, 102, 104],
-            "high":  [101, 102, 104, 103, 105],
-            "low":   [99,  100, 102, 101, 103],
-            "close": [101, 102, 103, 102, 104]
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 103, 102, 104],
+                "high": [101, 102, 104, 103, 105],
+                "low": [99, 100, 102, 101, 103],
+                "close": [101, 102, 103, 102, 104],
+            },
+            index=dates,
+        )
 
         # Strict filter (5%)
         bullish_strict, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.05
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.05
         )
 
         # Lenient filter (1%)
         bullish_lenient, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.01
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.01
         )
 
         assert len(bullish_lenient) >= len(bullish_strict)
@@ -149,16 +160,18 @@ class TestFindOrderBlocks:
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
         # Flat price action, no impulses
-        data = pd.DataFrame({
-            "open":  [100, 100, 100, 100, 100],
-            "high":  [101, 101, 101, 101, 101],
-            "low":   [99,  99,  99,  99,  99],
-            "close": [100, 100, 100, 100, 100]
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 100, 100, 100, 100],
+                "high": [101, 101, 101, 101, 101],
+                "low": [99, 99, 99, 99, 99],
+                "close": [100, 100, 100, 100, 100],
+            },
+            index=dates,
+        )
 
         bullish, bearish = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.05
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.05
         )
 
         assert len(bullish) == 0
@@ -170,16 +183,12 @@ class TestFindOrderBlocks:
         """Should return empty for less than 3 bars."""
         dates = pd.date_range("2024-01-01", periods=2, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 101],
-            "high":  [101, 102],
-            "low":   [99,  100],
-            "close": [101, 102]
-        }, index=dates)
-
-        bullish, bearish = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"]
+        data = pd.DataFrame(
+            {"open": [100, 101], "high": [101, 102], "low": [99, 100], "close": [101, 102]},
+            index=dates,
         )
+
+        bullish, bearish = find_order_blocks(data["open"], data["high"], data["low"], data["close"])
 
         assert len(bullish) == 0
         assert len(bearish) == 0
@@ -190,7 +199,7 @@ class TestFindOrderBlocks:
             bullish_ob_data["open"],
             bullish_ob_data["high"],
             bullish_ob_data["low"],
-            bullish_ob_data["close"]
+            bullish_ob_data["close"],
         )
 
         required_cols = ["ob_high", "ob_low", "invalidated", "retest_count"]
@@ -210,7 +219,7 @@ class TestCheckOBRetest:
             bullish_ob_data["high"],
             bullish_ob_data["low"],
             bullish_ob_data["close"],
-            min_impulse_percent=0.05
+            min_impulse_percent=0.05,
         )
 
         if len(bullish) == 0:
@@ -222,10 +231,7 @@ class TestCheckOBRetest:
         retest_data.loc[retest_data.index[-1], "low"] = ob_mid
 
         retests = check_ob_retest(
-            retest_data["high"],
-            retest_data["low"],
-            bullish,
-            direction="bullish"
+            retest_data["high"], retest_data["low"], bullish, direction="bullish"
         )
 
         assert retests.sum() > 0
@@ -234,25 +240,25 @@ class TestCheckOBRetest:
         """OB should be invalidated when price breaks through it."""
         dates = pd.date_range("2024-01-01", periods=8, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 101, 103, 102, 110, 111, 112, 100],
-            "high":  [101, 102, 104, 103, 111, 112, 113, 101],
-            "low":   [99,  100, 102, 101, 109, 110, 111, 99],
-            "close": [101, 102, 103, 102, 110, 111, 112, 100]
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 103, 102, 110, 111, 112, 100],
+                "high": [101, 102, 104, 103, 111, 112, 113, 101],
+                "low": [99, 100, 102, 101, 109, 110, 111, 99],
+                "close": [101, 102, 103, 102, 110, 111, 112, 100],
+            },
+            index=dates,
+        )
 
         bullish, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.05
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.05
         )
 
         if len(bullish) > 0:
             # Make last candle break below OB low
             data.loc[dates[-1], "low"] = bullish.iloc[0]["ob_low"] - 10
 
-            check_ob_retest(
-                data["high"], data["low"], bullish, direction="bullish"
-            )
+            check_ob_retest(data["high"], data["low"], bullish, direction="bullish")
 
             # Check if invalidated flag is set
             assert bullish["invalidated"].any()
@@ -261,22 +267,22 @@ class TestCheckOBRetest:
         """Bullish OB should be invalidated if price goes below OB low."""
         dates = pd.date_range("2024-01-01", periods=6, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 101, 103, 102, 110, 100],
-            "high":  [101, 102, 104, 103, 111, 101],
-            "low":   [99,  100, 102, 101, 109, 95],  # Last bar breaks low
-            "close": [101, 102, 103, 102, 110, 96]
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 103, 102, 110, 100],
+                "high": [101, 102, 104, 103, 111, 101],
+                "low": [99, 100, 102, 101, 109, 95],  # Last bar breaks low
+                "close": [101, 102, 103, 102, 110, 96],
+            },
+            index=dates,
+        )
 
         bullish, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.05
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.05
         )
 
         if len(bullish) > 0:
-            check_ob_retest(
-                data["high"], data["low"], bullish, direction="bullish"
-            )
+            check_ob_retest(data["high"], data["low"], bullish, direction="bullish")
 
             assert bullish["invalidated"].any()
 
@@ -289,19 +295,20 @@ class TestCheckOBRetest:
             bearish_ob_data_copy["high"],
             bearish_ob_data_copy["low"],
             bearish_ob_data_copy["close"],
-            min_impulse_percent=0.05
+            min_impulse_percent=0.05,
         )
 
         if len(bearish) > 0:
             # Make last candle break above OB high
-            bearish_ob_data_copy.loc[bearish_ob_data_copy.index[-1], "high"] = \
+            bearish_ob_data_copy.loc[bearish_ob_data_copy.index[-1], "high"] = (
                 bearish.iloc[0]["ob_high"] + 10
+            )
 
             check_ob_retest(
                 bearish_ob_data_copy["high"],
                 bearish_ob_data_copy["low"],
                 bearish,
-                direction="bearish"
+                direction="bearish",
             )
 
             assert bearish["invalidated"].any()
@@ -310,24 +317,24 @@ class TestCheckOBRetest:
         """Retest count should increment when price retests OB."""
         dates = pd.date_range("2024-01-01", periods=8, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 101, 103, 102, 110, 111, 103, 112],  # Bar 6 retests
-            "high":  [101, 102, 104, 103, 111, 112, 104, 113],
-            "low":   [99,  100, 102, 101, 109, 110, 102, 111],
-            "close": [101, 102, 103, 102, 110, 111, 103, 112]
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 103, 102, 110, 111, 103, 112],  # Bar 6 retests
+                "high": [101, 102, 104, 103, 111, 112, 104, 113],
+                "low": [99, 100, 102, 101, 109, 110, 102, 111],
+                "close": [101, 102, 103, 102, 110, 111, 103, 112],
+            },
+            index=dates,
+        )
 
         bullish, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.05
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.05
         )
 
         if len(bullish) > 0:
             initial_count = bullish.iloc[0]["retest_count"]
 
-            check_ob_retest(
-                data["high"], data["low"], bullish, direction="bullish"
-            )
+            check_ob_retest(data["high"], data["low"], bullish, direction="bullish")
 
             assert bullish.iloc[0]["retest_count"] >= initial_count
 
@@ -339,12 +346,15 @@ class TestGetValidOrderBlocks:
         """Should return only non-invalidated OBs."""
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [105, 110, 115],
-            "ob_low":  [103, 108, 113],
-            "invalidated": [True, False, False],
-            "retest_count": [2, 1, 0]
-        }, index=dates[:3])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [105, 110, 115],
+                "ob_low": [103, 108, 113],
+                "invalidated": [True, False, False],
+                "retest_count": [2, 1, 0],
+            },
+            index=dates[:3],
+        )
 
         valid = get_valid_order_blocks(obs, dates[-1])
 
@@ -355,22 +365,21 @@ class TestGetValidOrderBlocks:
         """Should filter by max age."""
         dates = pd.date_range("2024-01-01", periods=100, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [105, 110, 115, 120],
-            "ob_low":  [103, 108, 113, 118],
-            "invalidated": [False, False, False, False],
-            "retest_count": [0, 0, 0, 0]
-        }, index=[dates[10], dates[20], dates[30], dates[40]])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [105, 110, 115, 120],
+                "ob_low": [103, 108, 113, 118],
+                "invalidated": [False, False, False, False],
+                "retest_count": [0, 0, 0, 0],
+            },
+            index=[dates[10], dates[20], dates[30], dates[40]],
+        )
 
         # Get with age limit
-        valid_limited = get_valid_order_blocks(
-            obs, dates[50], max_age_bars=2
-        )
+        valid_limited = get_valid_order_blocks(obs, dates[50], max_age_bars=2)
 
         # Get without age limit
-        valid_all = get_valid_order_blocks(
-            obs, dates[50], max_age_bars=None
-        )
+        valid_all = get_valid_order_blocks(obs, dates[50], max_age_bars=None)
 
         assert len(valid_limited) <= len(valid_all)
 
@@ -382,18 +391,18 @@ class TestGetNearestOrderBlock:
         """Should find nearest OB below price."""
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [95, 90, 85],
-            "ob_low":  [93, 88, 83],
-            "invalidated": [False, False, False],
-            "retest_count": [0, 0, 0]
-        }, index=dates[:3])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [95, 90, 85],
+                "ob_low": [93, 88, 83],
+                "invalidated": [False, False, False],
+                "retest_count": [0, 0, 0],
+            },
+            index=dates[:3],
+        )
 
         nearest = get_nearest_order_block(
-            price=100,
-            order_blocks=obs,
-            current_idx=dates[-1],
-            direction="below"
+            price=100, order_blocks=obs, current_idx=dates[-1], direction="below"
         )
 
         assert nearest is not None
@@ -404,18 +413,18 @@ class TestGetNearestOrderBlock:
         """Should find nearest OB above price."""
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [105, 110, 115],
-            "ob_low":  [103, 108, 113],
-            "invalidated": [False, False, False],
-            "retest_count": [0, 0, 0]
-        }, index=dates[:3])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [105, 110, 115],
+                "ob_low": [103, 108, 113],
+                "invalidated": [False, False, False],
+                "retest_count": [0, 0, 0],
+            },
+            index=dates[:3],
+        )
 
         nearest = get_nearest_order_block(
-            price=100,
-            order_blocks=obs,
-            current_idx=dates[-1],
-            direction="above"
+            price=100, order_blocks=obs, current_idx=dates[-1], direction="above"
         )
 
         assert nearest is not None
@@ -426,18 +435,18 @@ class TestGetNearestOrderBlock:
         dates = pd.date_range("2024-01-01", periods=5, freq="1h")
 
         # All invalidated
-        obs = pd.DataFrame({
-            "ob_high": [105, 110],
-            "ob_low":  [103, 108],
-            "invalidated": [True, True],
-            "retest_count": [0, 0]
-        }, index=dates[:2])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [105, 110],
+                "ob_low": [103, 108],
+                "invalidated": [True, True],
+                "retest_count": [0, 0],
+            },
+            index=dates[:2],
+        )
 
         nearest = get_nearest_order_block(
-            price=100,
-            order_blocks=obs,
-            current_idx=dates[-1],
-            direction="below"
+            price=100, order_blocks=obs, current_idx=dates[-1], direction="below"
         )
 
         assert nearest is None
@@ -450,12 +459,15 @@ class TestCalculateOBStrength:
         """Strength should increase with retest count."""
         dates = pd.date_range("2024-01-01", periods=3, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [105, 110],
-            "ob_low":  [103, 108],
-            "invalidated": [False, False],
-            "retest_count": [0, 5]  # Second OB has more retests
-        }, index=dates[:2])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [105, 110],
+                "ob_low": [103, 108],
+                "invalidated": [False, False],
+                "retest_count": [0, 5],  # Second OB has more retests
+            },
+            index=dates[:2],
+        )
 
         strength = calculate_ob_strength(obs)
 
@@ -467,12 +479,15 @@ class TestCalculateOBStrength:
         """Strength should consider OB size."""
         dates = pd.date_range("2024-01-01", periods=3, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [105, 115],  # Second OB is larger
-            "ob_low":  [103, 108],
-            "invalidated": [False, False],
-            "retest_count": [0, 0]  # Same retests
-        }, index=dates[:2])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [105, 115],  # Second OB is larger
+                "ob_low": [103, 108],
+                "invalidated": [False, False],
+                "retest_count": [0, 0],  # Same retests
+            },
+            index=dates[:2],
+        )
 
         strength = calculate_ob_strength(obs)
 
@@ -484,12 +499,15 @@ class TestCalculateOBStrength:
         """OB strength should be capped at 100."""
         dates = pd.date_range("2024-01-01", periods=3, freq="1h")
 
-        obs = pd.DataFrame({
-            "ob_high": [200],  # Huge OB
-            "ob_low":  [100],
-            "invalidated": [False],
-            "retest_count": [100]  # Many retests
-        }, index=dates[:1])
+        obs = pd.DataFrame(
+            {
+                "ob_high": [200],  # Huge OB
+                "ob_low": [100],
+                "invalidated": [False],
+                "retest_count": [100],  # Many retests
+            },
+            index=dates[:1],
+        )
 
         strength = calculate_ob_strength(obs)
 

@@ -3,14 +3,15 @@
 NOTE: These are integration tests that test the full strategy logic.
 Some tests may require vectorbt which is only available in Docker.
 """
-import pytest
-import pandas as pd
-import numpy as np
 
-from strategies.fvg_fill import FVGFillStrategy
-from strategies.bos_orderblock import BOSOrderBlockStrategy
-from strategies.liquidity_sweep import LiquiditySweepStrategy
+import numpy as np
+import pandas as pd
+import pytest
+
 from strategies.base import Signal
+from strategies.bos_orderblock import BOSOrderBlockStrategy
+from strategies.fvg_fill import FVGFillStrategy
+from strategies.liquidity_sweep import LiquiditySweepStrategy
 
 
 @pytest.fixture
@@ -22,13 +23,16 @@ def sample_ohlcv():
     # Create uptrend with pullbacks
     close = np.linspace(100, 150, 200) + np.random.randn(200) * 2
 
-    return pd.DataFrame({
-        "open": close - np.random.rand(200),
-        "high": close + np.random.rand(200) * 2,
-        "low": close - np.random.rand(200) * 2,
-        "close": close,
-        "volume": np.random.randint(1000, 10000, 200)
-    }, index=dates)
+    return pd.DataFrame(
+        {
+            "open": close - np.random.rand(200),
+            "high": close + np.random.rand(200) * 2,
+            "low": close - np.random.rand(200) * 2,
+            "close": close,
+            "volume": np.random.randint(1000, 10000, 200),
+        },
+        index=dates,
+    )
 
 
 @pytest.fixture
@@ -37,17 +41,100 @@ def fvg_pattern_data():
     dates = pd.date_range("2024-01-01", periods=20, freq="1h")
 
     # Bullish FVG followed by pullback to fill
-    data = pd.DataFrame({
-        "open":  [100, 101, 106, 107, 108, 109, 108, 105, 106, 107,
-                  108, 109, 110, 111, 112, 113, 114, 115, 116, 117],
-        "high":  [101, 102, 108, 109, 110, 110, 109, 106, 107, 108,
-                  109, 110, 111, 112, 113, 114, 115, 116, 117, 118],
-        "low":   [99,  100, 105, 106, 107, 108, 104, 103, 105, 106,
-                  107, 108, 109, 110, 111, 112, 113, 114, 115, 116],
-        "close": [101, 102, 107, 108, 109, 109, 105, 104, 106, 107,
-                  108, 109, 110, 111, 112, 113, 114, 115, 116, 117],
-        "volume": [1000] * 20
-    }, index=dates)
+    data = pd.DataFrame(
+        {
+            "open": [
+                100,
+                101,
+                106,
+                107,
+                108,
+                109,
+                108,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+            ],
+            "high": [
+                101,
+                102,
+                108,
+                109,
+                110,
+                110,
+                109,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+                118,
+            ],
+            "low": [
+                99,
+                100,
+                105,
+                106,
+                107,
+                108,
+                104,
+                103,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+            ],
+            "close": [
+                101,
+                102,
+                107,
+                108,
+                109,
+                109,
+                105,
+                104,
+                106,
+                107,
+                108,
+                109,
+                110,
+                111,
+                112,
+                113,
+                114,
+                115,
+                116,
+                117,
+            ],
+            "volume": [1000] * 20,
+        },
+        index=dates,
+    )
 
     return data
 
@@ -60,13 +147,16 @@ def bos_pattern_data():
     # Create swing highs, BOS, and OB retest
     close = [100] * 5 + [105] * 5 + [110] * 5 + [115] * 5 + [120] * 10
 
-    data = pd.DataFrame({
-        "open": close,
-        "high": [c + 1 for c in close],
-        "low": [c - 1 for c in close],
-        "close": close,
-        "volume": [1000] * 30
-    }, index=dates)
+    data = pd.DataFrame(
+        {
+            "open": close,
+            "high": [c + 1 for c in close],
+            "low": [c - 1 for c in close],
+            "close": close,
+            "volume": [1000] * 30,
+        },
+        index=dates,
+    )
 
     return data
 
@@ -99,17 +189,100 @@ class TestFVGFillStrategy:
         dates = pd.date_range("2024-01-01", periods=20, freq="1h")
 
         # Bearish FVG pattern
-        data = pd.DataFrame({
-            "open":  [100, 99, 94, 93, 92, 91, 92, 95, 94, 93,
-                      92, 91, 90, 89, 88, 87, 86, 85, 84, 83],
-            "high":  [101, 100, 95, 94, 93, 92, 96, 97, 95, 94,
-                      93, 92, 91, 90, 89, 88, 87, 86, 85, 84],
-            "low":   [99,  90, 88, 87, 86, 85, 90, 93, 92, 91,
-                      90, 89, 88, 87, 86, 85, 84, 83, 82, 81],
-            "close": [99,  91, 89, 88, 87, 86, 95, 94, 93, 92,
-                      91, 90, 89, 88, 87, 86, 85, 84, 83, 82],
-            "volume": [1000] * 20
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [
+                    100,
+                    99,
+                    94,
+                    93,
+                    92,
+                    91,
+                    92,
+                    95,
+                    94,
+                    93,
+                    92,
+                    91,
+                    90,
+                    89,
+                    88,
+                    87,
+                    86,
+                    85,
+                    84,
+                    83,
+                ],
+                "high": [
+                    101,
+                    100,
+                    95,
+                    94,
+                    93,
+                    92,
+                    96,
+                    97,
+                    95,
+                    94,
+                    93,
+                    92,
+                    91,
+                    90,
+                    89,
+                    88,
+                    87,
+                    86,
+                    85,
+                    84,
+                ],
+                "low": [
+                    99,
+                    90,
+                    88,
+                    87,
+                    86,
+                    85,
+                    90,
+                    93,
+                    92,
+                    91,
+                    90,
+                    89,
+                    88,
+                    87,
+                    86,
+                    85,
+                    84,
+                    83,
+                    82,
+                    81,
+                ],
+                "close": [
+                    99,
+                    91,
+                    89,
+                    88,
+                    87,
+                    86,
+                    95,
+                    94,
+                    93,
+                    92,
+                    91,
+                    90,
+                    89,
+                    88,
+                    87,
+                    86,
+                    85,
+                    84,
+                    83,
+                    82,
+                ],
+                "volume": [1000] * 20,
+            },
+            index=dates,
+        )
 
         strategy = FVGFillStrategy({"min_gap_percent": 0.01})
         signals = strategy.generate_signals(data)
@@ -131,13 +304,16 @@ class TestFVGFillStrategy:
         """Short signal stop loss should be above FVG."""
         dates = pd.date_range("2024-01-01", periods=15, freq="1h")
 
-        data = pd.DataFrame({
-            "open":  [100, 99, 94, 93, 92, 91, 92, 95, 94, 93, 92, 91, 90, 89, 88],
-            "high":  [101, 100, 95, 94, 93, 92, 96, 97, 95, 94, 93, 92, 91, 90, 89],
-            "low":   [99,  90, 88, 87, 86, 85, 90, 93, 92, 91, 90, 89, 88, 87, 86],
-            "close": [99,  91, 89, 88, 87, 86, 95, 94, 93, 92, 91, 90, 89, 88, 87],
-            "volume": [1000] * 15
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 99, 94, 93, 92, 91, 92, 95, 94, 93, 92, 91, 90, 89, 88],
+                "high": [101, 100, 95, 94, 93, 92, 96, 97, 95, 94, 93, 92, 91, 90, 89],
+                "low": [99, 90, 88, 87, 86, 85, 90, 93, 92, 91, 90, 89, 88, 87, 86],
+                "close": [99, 91, 89, 88, 87, 86, 95, 94, 93, 92, 91, 90, 89, 88, 87],
+                "volume": [1000] * 15,
+            },
+            index=dates,
+        )
 
         strategy = FVGFillStrategy({"min_gap_percent": 0.01})
         signals = strategy.generate_signals(data)
@@ -210,13 +386,16 @@ class TestFVGFillStrategy:
         dates = pd.date_range("2024-01-01", periods=10, freq="1h")
 
         # Flat price action, no gaps
-        data = pd.DataFrame({
-            "open":  [100] * 10,
-            "high":  [101] * 10,
-            "low":   [99] * 10,
-            "close": [100] * 10,
-            "volume": [1000] * 10
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100] * 10,
+                "high": [101] * 10,
+                "low": [99] * 10,
+                "close": [100] * 10,
+                "volume": [1000] * 10,
+            },
+            index=dates,
+        )
 
         strategy = FVGFillStrategy({"min_gap_percent": 0.01})
         signals = strategy.generate_signals(data)
@@ -271,13 +450,16 @@ class TestFVGFillStrategy:
 
         dates = pd.date_range("2024-01-01", periods=15, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 115)),
-            "high": list(range(101, 116)),
-            "low": list(range(99, 114)),
-            "close": list(range(100, 115)),
-            "volume": [1000] * 15
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 115)),
+                "high": list(range(101, 116)),
+                "low": list(range(99, 114)),
+                "close": list(range(100, 115)),
+                "volume": [1000] * 15,
+            },
+            index=dates,
+        )
 
         # Signal at index 5 (< 10 bars lookback)
         conf = strategy.calculate_confidence(data, 5)
@@ -315,13 +497,16 @@ class TestFVGFillStrategy:
         # Volume spike at index 40
         volumes = [1000] * 40 + [3000] + [1000] * 9
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": volumes
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": volumes,
+            },
+            index=dates,
+        )
 
         conf_spike = strategy.calculate_confidence(data, 40)
         conf_normal = strategy.calculate_confidence(data, 30)
@@ -336,13 +521,16 @@ class TestFVGFillStrategy:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # Low volatility data
-        data = pd.DataFrame({
-            "open": [100 + i * 0.1 for i in range(50)],
-            "high": [100.2 + i * 0.1 for i in range(50)],
-            "low": [99.8 + i * 0.1 for i in range(50)],
-            "close": [100 + i * 0.1 for i in range(50)],
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100 + i * 0.1 for i in range(50)],
+                "high": [100.2 + i * 0.1 for i in range(50)],
+                "low": [99.8 + i * 0.1 for i in range(50)],
+                "close": [100 + i * 0.1 for i in range(50)],
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         conf = strategy.calculate_confidence(data, 40)
 
@@ -381,20 +569,26 @@ class TestFVGFillStrategy:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # Create FVG zones (all filled)
-        fvg_zones = pd.DataFrame({
-            "gap_high": [105.0, 110.0, 115.0],
-            "gap_low": [103.0, 108.0, 113.0],
-            "filled": [True, True, True]  # All filled
-        }, index=[dates[10], dates[20], dates[30]])
+        fvg_zones = pd.DataFrame(
+            {
+                "gap_high": [105.0, 110.0, 115.0],
+                "gap_low": [103.0, 108.0, 113.0],
+                "filled": [True, True, True],  # All filled
+            },
+            index=[dates[10], dates[20], dates[30]],
+        )
 
         signal = strategy._create_long_signal(data, dates[40], fvg_zones)
 
@@ -410,20 +604,26 @@ class TestFVGFillStrategy:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(150, 100, -1)),
-            "high": list(range(151, 101, -1)),
-            "low": list(range(149, 99, -1)),
-            "close": list(range(150, 100, -1)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(150, 100, -1)),
+                "high": list(range(151, 101, -1)),
+                "low": list(range(149, 99, -1)),
+                "close": list(range(150, 100, -1)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # All filled FVGs
-        fvg_zones = pd.DataFrame({
-            "gap_high": [145.0, 140.0, 135.0],
-            "gap_low": [143.0, 138.0, 133.0],
-            "filled": [True, True, True]
-        }, index=[dates[10], dates[20], dates[30]])
+        fvg_zones = pd.DataFrame(
+            {
+                "gap_high": [145.0, 140.0, 135.0],
+                "gap_low": [143.0, 138.0, 133.0],
+                "filled": [True, True, True],
+            },
+            index=[dates[10], dates[20], dates[30]],
+        )
 
         signal = strategy._create_short_signal(data, dates[40], fvg_zones)
 
@@ -437,20 +637,26 @@ class TestFVGFillStrategy:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # FVG with gap_low above entry (invalid)
-        fvg_zones = pd.DataFrame({
-            "gap_high": [160.0],  # Way above
-            "gap_low": [158.0],   # Above entry
-            "filled": [False]
-        }, index=[dates[10]])
+        fvg_zones = pd.DataFrame(
+            {
+                "gap_high": [160.0],  # Way above
+                "gap_low": [158.0],  # Above entry
+                "filled": [False],
+            },
+            index=[dates[10]],
+        )
 
         signal = strategy._create_long_signal(data, dates[30], fvg_zones)
 
@@ -463,20 +669,22 @@ class TestFVGFillStrategy:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(150, 100, -1)),
-            "high": list(range(151, 101, -1)),
-            "low": list(range(149, 99, -1)),
-            "close": list(range(150, 100, -1)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(150, 100, -1)),
+                "high": list(range(151, 101, -1)),
+                "low": list(range(149, 99, -1)),
+                "close": list(range(150, 100, -1)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # FVG with gap_high below entry (invalid)
-        fvg_zones = pd.DataFrame({
-            "gap_high": [90.0],   # Below entry
-            "gap_low": [88.0],    # Way below
-            "filled": [False]
-        }, index=[dates[10]])
+        fvg_zones = pd.DataFrame(
+            {"gap_high": [90.0], "gap_low": [88.0], "filled": [False]},  # Below entry  # Way below
+            index=[dates[10]],
+        )
 
         signal = strategy._create_short_signal(data, dates[30], fvg_zones)
 
@@ -599,13 +807,16 @@ class TestBOSOrderBlockStrategy:
         # Downtrend with BOS
         close = [100] * 5 + [95] * 5 + [90] * 5 + [85] * 5 + [80] * 10
 
-        data = pd.DataFrame({
-            "open": close,
-            "high": [c + 1 for c in close],
-            "low": [c - 1 for c in close],
-            "close": close,
-            "volume": [1000] * 30
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": close,
+                "high": [c + 1 for c in close],
+                "low": [c - 1 for c in close],
+                "close": close,
+                "volume": [1000] * 30,
+            },
+            index=dates,
+        )
 
         strategy = BOSOrderBlockStrategy()
         signals = strategy.generate_signals(data)
@@ -648,13 +859,16 @@ class TestBOSOrderBlockStrategy:
 
         close = [100] * 5 + [95] * 5 + [90] * 5 + [85] * 5 + [80] * 10
 
-        data = pd.DataFrame({
-            "open": close,
-            "high": [c + 1 for c in close],
-            "low": [c - 1 for c in close],
-            "close": close,
-            "volume": [1000] * 30
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": close,
+                "high": [c + 1 for c in close],
+                "low": [c - 1 for c in close],
+                "close": close,
+                "volume": [1000] * 30,
+            },
+            index=dates,
+        )
 
         strategy = BOSOrderBlockStrategy()
         signals = strategy.generate_signals(data)
@@ -713,13 +927,16 @@ class TestBOSOrderBlockStrategy:
         dates = pd.date_range("2024-01-01", periods=20, freq="1h")
 
         # Ranging market, no clear BOS
-        data = pd.DataFrame({
-            "open":  [100] * 20,
-            "high":  [102] * 20,
-            "low":   [98] * 20,
-            "close": [100] * 20,
-            "volume": [1000] * 20
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100] * 20,
+                "high": [102] * 20,
+                "low": [98] * 20,
+                "close": [100] * 20,
+                "volume": [1000] * 20,
+            },
+            index=dates,
+        )
 
         strategy = BOSOrderBlockStrategy()
         signals = strategy.generate_signals(data)
@@ -734,13 +951,16 @@ class TestBOSOrderBlockStrategy:
         # Smooth trend, no OBs
         close = list(range(100, 120))
 
-        data = pd.DataFrame({
-            "open": close,
-            "high": [c + 0.5 for c in close],
-            "low": [c - 0.5 for c in close],
-            "close": close,
-            "volume": [1000] * 20
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": close,
+                "high": [c + 0.5 for c in close],
+                "low": [c - 0.5 for c in close],
+                "close": close,
+                "volume": [1000] * 20,
+            },
+            index=dates,
+        )
 
         strategy = BOSOrderBlockStrategy()
         signals = strategy.generate_signals(data)
@@ -784,21 +1004,140 @@ def liquidity_sweep_data():
     # - Swing low at index 5 (price = 100)
     # - Price sweeps below (low = 99.5) at index 20
     # - Reverses back inside (close = 101) - bullish sweep
-    data = pd.DataFrame({
-        "open":  [105, 104, 103, 102, 101, 100, 101, 102, 103, 104,
-                  105, 106, 107, 106, 105, 104, 103, 102, 101, 100,
-                  99.5, 101, 102, 103, 104, 105, 106, 107, 108, 109],
-        "high":  [106, 105, 104, 103, 102, 101, 102, 103, 104, 105,
-                  106, 107, 108, 107, 106, 105, 104, 103, 102, 101,
-                  101, 102, 103, 104, 105, 106, 107, 108, 109, 110],
-        "low":   [104, 103, 102, 101, 100, 99, 100, 101, 102, 103,
-                  104, 105, 106, 105, 104, 103, 102, 101, 100, 99.5,
-                  99, 100, 101, 102, 103, 104, 105, 106, 107, 108],
-        "close": [104, 103, 102, 101, 100, 100, 101, 102, 103, 104,
-                  105, 106, 107, 106, 105, 104, 103, 102, 101, 100,
-                  101, 101, 102, 103, 104, 105, 106, 107, 108, 109],
-        "volume": [1000] * 30
-    }, index=dates)
+    data = pd.DataFrame(
+        {
+            "open": [
+                105,
+                104,
+                103,
+                102,
+                101,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                106,
+                105,
+                104,
+                103,
+                102,
+                101,
+                100,
+                99.5,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+            ],
+            "high": [
+                106,
+                105,
+                104,
+                103,
+                102,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                107,
+                106,
+                105,
+                104,
+                103,
+                102,
+                101,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+                110,
+            ],
+            "low": [
+                104,
+                103,
+                102,
+                101,
+                100,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                105,
+                104,
+                103,
+                102,
+                101,
+                100,
+                99.5,
+                99,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+            ],
+            "close": [
+                104,
+                103,
+                102,
+                101,
+                100,
+                100,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                106,
+                105,
+                104,
+                103,
+                102,
+                101,
+                100,
+                101,
+                101,
+                102,
+                103,
+                104,
+                105,
+                106,
+                107,
+                108,
+                109,
+            ],
+            "volume": [1000] * 30,
+        },
+        index=dates,
+    )
 
     return data
 
@@ -818,10 +1157,7 @@ class TestLiquiditySweepStrategy:
 
     def test_custom_parameters(self):
         """Test strategy accepts custom parameters."""
-        custom_params = {
-            "swing_period": 10,
-            "min_rr_ratio": 2.0
-        }
+        custom_params = {"swing_period": 10, "min_rr_ratio": 2.0}
         strategy = LiquiditySweepStrategy(custom_params)
 
         assert strategy.params["swing_period"] == 10
@@ -843,10 +1179,8 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
 
         # Create sample swing and equal levels
-        swing_levels = pd.Series([100.0, None, 105.0, None, 110.0],
-                                index=sample_ohlcv.index[:5])
-        equal_levels = pd.Series([None, 103.0, None, None, 111.0],
-                                index=sample_ohlcv.index[:5])
+        swing_levels = pd.Series([100.0, None, 105.0, None, 110.0], index=sample_ohlcv.index[:5])
+        equal_levels = pd.Series([None, 103.0, None, None, 111.0], index=sample_ohlcv.index[:5])
 
         combined = strategy._combine_liquidity_levels(swing_levels, equal_levels)
 
@@ -864,9 +1198,7 @@ class TestLiquiditySweepStrategy:
         data = liquidity_sweep_data
 
         # Find swing points
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Try to create signal at sweep bar (index 20)
         idx = data.index[20]
@@ -893,9 +1225,7 @@ class TestLiquiditySweepStrategy:
         idx = data.index[50]
         data.loc[idx, "low"] = data.loc[idx, "close"] * 1.01  # Low > close
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         signal = strategy._create_long_signal(data, idx, swing_highs, swing_lows)
 
@@ -909,9 +1239,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = liquidity_sweep_data
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Create signal late in data (should have prior swing highs)
         idx = data.index[25]
@@ -929,9 +1257,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = liquidity_sweep_data.copy()
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         idx = data.index[20]
         signal = strategy._create_long_signal(data, idx, swing_highs, swing_lows)
@@ -950,9 +1276,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Try creating short signal at an arbitrary index
         idx = data.index[100]
@@ -979,9 +1303,7 @@ class TestLiquiditySweepStrategy:
         idx = data.index[50]
         data.loc[idx, "high"] = data.loc[idx, "close"] * 0.99  # High < close
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         signal = strategy._create_short_signal(data, idx, swing_highs, swing_lows)
 
@@ -995,9 +1317,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Create signal late in data
         idx = data.index[150]
@@ -1014,9 +1334,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         idx = data.index[100]
         signal = strategy._create_short_signal(data, idx, swing_highs, swing_lows)
@@ -1061,9 +1379,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Use invalid index (should trigger exception)
         invalid_idx = pd.Timestamp("2025-01-01")
@@ -1079,9 +1395,7 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Use invalid index
         invalid_idx = pd.Timestamp("2025-01-01")
@@ -1123,13 +1437,16 @@ class TestLiquiditySweepStrategy:
 
         # Create minimal data (3 bars)
         dates = pd.date_range("2024-01-01", periods=3, freq="1h")
-        data = pd.DataFrame({
-            "open": [100, 101, 102],
-            "high": [101, 102, 103],
-            "low": [99, 100, 101],
-            "close": [100, 101, 102],
-            "volume": [1000, 1000, 1000]
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100, 101, 102],
+                "high": [101, 102, 103],
+                "low": [99, 100, 101],
+                "close": [100, 101, 102],
+                "volume": [1000, 1000, 1000],
+            },
+            index=dates,
+        )
 
         atr = strategy._calculate_atr(data, period=14)
 
@@ -1167,13 +1484,16 @@ class TestLiquiditySweepStrategy:
         # Normal volume, then spike at index 40
         volumes = [1000] * 40 + [3000] + [1000] * 9  # 3x volume spike
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": volumes
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": volumes,
+            },
+            index=dates,
+        )
 
         # Confidence at spike bar
         conf_spike = strategy.calculate_confidence(data, 40)
@@ -1191,13 +1511,16 @@ class TestLiquiditySweepStrategy:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # Low volatility (small ATR)
-        data_low_vol = pd.DataFrame({
-            "open": [100 + i * 0.1 for i in range(50)],
-            "high": [100.2 + i * 0.1 for i in range(50)],
-            "low": [99.8 + i * 0.1 for i in range(50)],
-            "close": [100 + i * 0.1 for i in range(50)],
-            "volume": [1000] * 50
-        }, index=dates)
+        data_low_vol = pd.DataFrame(
+            {
+                "open": [100 + i * 0.1 for i in range(50)],
+                "high": [100.2 + i * 0.1 for i in range(50)],
+                "low": [99.8 + i * 0.1 for i in range(50)],
+                "close": [100 + i * 0.1 for i in range(50)],
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         conf = strategy.calculate_confidence(data_low_vol, 40)
 
@@ -1213,17 +1536,26 @@ class TestLiquiditySweepStrategy:
 
         # Create data with strong reversal candle at index 40
         close_prices = list(range(100, 150))
-        open_prices = [c - 0.5 for c in close_prices[:40]] + [100] + [c - 0.5 for c in close_prices[41:]]
-        high_prices = [c + 0.5 for c in close_prices[:40]] + [102] + [c + 0.5 for c in close_prices[41:]]
-        low_prices = [c - 0.5 for c in close_prices[:40]] + [98] + [c - 0.5 for c in close_prices[41:]]
+        open_prices = (
+            [c - 0.5 for c in close_prices[:40]] + [100] + [c - 0.5 for c in close_prices[41:]]
+        )
+        high_prices = (
+            [c + 0.5 for c in close_prices[:40]] + [102] + [c + 0.5 for c in close_prices[41:]]
+        )
+        low_prices = (
+            [c - 0.5 for c in close_prices[:40]] + [98] + [c - 0.5 for c in close_prices[41:]]
+        )
 
-        data = pd.DataFrame({
-            "open": open_prices,
-            "high": high_prices,
-            "low": low_prices,
-            "close": close_prices,
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": open_prices,
+                "high": high_prices,
+                "low": low_prices,
+                "close": close_prices,
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # Confidence at reversal candle
         conf = strategy.calculate_confidence(data, 40)
@@ -1322,12 +1654,10 @@ class TestLiquiditySweepStrategy:
         dates = pd.date_range("2024-01-01", periods=10, freq="1h")
 
         # Missing 'volume' column
-        invalid_data = pd.DataFrame({
-            "open": [100] * 10,
-            "high": [101] * 10,
-            "low": [99] * 10,
-            "close": [100] * 10
-        }, index=dates)
+        invalid_data = pd.DataFrame(
+            {"open": [100] * 10, "high": [101] * 10, "low": [99] * 10, "close": [100] * 10},
+            index=dates,
+        )
 
         with pytest.raises(ValueError, match="Missing required column: volume"):
             strategy.validate_data(invalid_data)
@@ -1337,13 +1667,15 @@ class TestLiquiditySweepStrategy:
         strategy = LiquiditySweepStrategy()
 
         # Integer index instead of DatetimeIndex
-        invalid_data = pd.DataFrame({
-            "open": [100] * 10,
-            "high": [101] * 10,
-            "low": [99] * 10,
-            "close": [100] * 10,
-            "volume": [1000] * 10
-        })  # Default integer index
+        invalid_data = pd.DataFrame(
+            {
+                "open": [100] * 10,
+                "high": [101] * 10,
+                "low": [99] * 10,
+                "close": [100] * 10,
+                "volume": [1000] * 10,
+            }
+        )  # Default integer index
 
         with pytest.raises(ValueError, match="Data index must be DatetimeIndex"):
             strategy.validate_data(invalid_data)
@@ -1354,13 +1686,9 @@ class TestLiquiditySweepStrategy:
 
         # Empty DataFrame
         dates = pd.date_range("2024-01-01", periods=0, freq="1h")
-        empty_data = pd.DataFrame({
-            "open": [],
-            "high": [],
-            "low": [],
-            "close": [],
-            "volume": []
-        }, index=dates)
+        empty_data = pd.DataFrame(
+            {"open": [], "high": [], "low": [], "close": [], "volume": []}, index=dates
+        )
 
         with pytest.raises(ValueError, match="Data cannot be empty"):
             strategy.validate_data(empty_data)
@@ -1372,13 +1700,16 @@ class TestLiquiditySweepStrategy:
         dates = pd.date_range("2024-01-01", periods=20, freq="1h")
 
         # Perfectly smooth data (no swing points)
-        data = pd.DataFrame({
-            "open": [100 + i * 0.01 for i in range(20)],
-            "high": [100.01 + i * 0.01 for i in range(20)],
-            "low": [99.99 + i * 0.01 for i in range(20)],
-            "close": [100 + i * 0.01 for i in range(20)],
-            "volume": [1000] * 20
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100 + i * 0.01 for i in range(20)],
+                "high": [100.01 + i * 0.01 for i in range(20)],
+                "low": [99.99 + i * 0.01 for i in range(20)],
+                "close": [100 + i * 0.01 for i in range(20)],
+                "volume": [1000] * 20,
+            },
+            index=dates,
+        )
 
         signals = strategy.generate_signals(data)
 
@@ -1394,17 +1725,18 @@ class TestLiquiditySweepStrategy:
 
         # Create pattern with multiple sweeps
         # Sweep 1 at index 10, Sweep 2 at index 20, Sweep 3 at index 30
-        prices = [100] * 5 + [99, 101] + [100] * 3 + \
-                 [99, 101] + [100] * 8 + \
-                 [99, 101] + [100] * 28
+        prices = [100] * 5 + [99, 101] + [100] * 3 + [99, 101] + [100] * 8 + [99, 101] + [100] * 28
 
-        data = pd.DataFrame({
-            "open": prices,
-            "high": [p + 0.5 for p in prices],
-            "low": [p - 1 for p in prices],
-            "close": prices,
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + 0.5 for p in prices],
+                "low": [p - 1 for p in prices],
+                "close": prices,
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         signals = strategy.generate_signals(data)
 
@@ -1485,12 +1817,14 @@ class TestLiquiditySweepStrategy:
         dates = pd.date_range("2024-01-01", periods=10, freq="1h")
 
         # Swing levels at all indices
-        swing_levels = pd.Series([100.0, 101.0, 102.0, 103.0, 104.0,
-                                 105.0, 106.0, 107.0, 108.0, 109.0], index=dates)
+        swing_levels = pd.Series(
+            [100.0, 101.0, 102.0, 103.0, 104.0, 105.0, 106.0, 107.0, 108.0, 109.0], index=dates
+        )
 
         # Equal levels at some indices (should override)
-        equal_levels = pd.Series([None, 150.0, None, 153.0, None,
-                                 None, None, None, None, 159.0], index=dates)
+        equal_levels = pd.Series(
+            [None, 150.0, None, 153.0, None, None, None, None, None, 159.0], index=dates
+        )
 
         combined = strategy._combine_liquidity_levels(swing_levels, equal_levels)
 
@@ -1551,8 +1885,7 @@ class TestBOSOrderBlockStrategyExtended:
 
         # Find order blocks
         bullish_ob, bearish_ob = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.01
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.01
         )
 
         if len(bullish_ob) > 0:
@@ -1587,8 +1920,7 @@ class TestBOSOrderBlockStrategyExtended:
         data = sample_ohlcv
 
         bullish_ob, bearish_ob = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.01
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.01
         )
 
         if len(bullish_ob) > 0:
@@ -1607,8 +1939,7 @@ class TestBOSOrderBlockStrategyExtended:
         data = sample_ohlcv
 
         bullish_ob, bearish_ob = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.01
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.01
         )
 
         if len(bullish_ob) > 10:
@@ -1634,13 +1965,10 @@ class TestBOSOrderBlockStrategyExtended:
         strategy = BOSOrderBlockStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         bullish_ob, bearish_ob = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.01
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.01
         )
 
         if len(bullish_ob) > 0:
@@ -1650,10 +1978,10 @@ class TestBOSOrderBlockStrategyExtended:
                 "timestamp": ob_idx,
                 "ob_high": bullish_ob.iloc[0]["ob_high"],
                 "ob_low": bullish_ob.iloc[0]["ob_low"],
-                "invalidated": False
+                "invalidated": False,
             }
 
-            bos_idx = data.index[min(50, len(data)-1)]
+            bos_idx = data.index[min(50, len(data) - 1)]
 
             signal = strategy._wait_for_retest(
                 data, bos_idx, ob_details, bullish_ob, swing_highs, direction="long"
@@ -1674,13 +2002,10 @@ class TestBOSOrderBlockStrategyExtended:
         strategy = BOSOrderBlockStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         bullish_ob, bearish_ob = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"],
-            min_impulse_percent=0.01
+            data["open"], data["high"], data["low"], data["close"], min_impulse_percent=0.01
         )
 
         if len(bearish_ob) > 0:
@@ -1689,10 +2014,10 @@ class TestBOSOrderBlockStrategyExtended:
                 "timestamp": ob_idx,
                 "ob_high": bearish_ob.iloc[0]["ob_high"],
                 "ob_low": bearish_ob.iloc[0]["ob_low"],
-                "invalidated": False
+                "invalidated": False,
             }
 
-            bos_idx = data.index[min(50, len(data)-1)]
+            bos_idx = data.index[min(50, len(data) - 1)]
 
             signal = strategy._wait_for_retest(
                 data, bos_idx, ob_details, bearish_ob, swing_lows, direction="short"
@@ -1712,13 +2037,9 @@ class TestBOSOrderBlockStrategyExtended:
         strategy = BOSOrderBlockStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
-        bullish_ob, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"]
-        )
+        bullish_ob, _ = find_order_blocks(data["open"], data["high"], data["low"], data["close"])
 
         if len(bullish_ob) > 0:
             ob_idx = bullish_ob.index[0]
@@ -1726,7 +2047,7 @@ class TestBOSOrderBlockStrategyExtended:
                 "timestamp": ob_idx,
                 "ob_high": bullish_ob.iloc[0]["ob_high"],
                 "ob_low": bullish_ob.iloc[0]["ob_low"],
-                "invalidated": True  # Invalidated OB
+                "invalidated": True,  # Invalidated OB
             }
 
             bos_idx = data.index[50]
@@ -1745,9 +2066,7 @@ class TestBOSOrderBlockStrategyExtended:
         strategy = BOSOrderBlockStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Simulate OB details
         idx = data.index[100]
@@ -1755,12 +2074,10 @@ class TestBOSOrderBlockStrategyExtended:
             "timestamp": data.index[95],
             "ob_high": data.loc[data.index[95], "high"],
             "ob_low": data.loc[data.index[95], "low"],
-            "invalidated": False
+            "invalidated": False,
         }
 
-        signal = strategy._create_long_signal(
-            data, idx, ob_details, swing_highs
-        )
+        signal = strategy._create_long_signal(data, idx, ob_details, swing_highs)
 
         if signal is not None:
             assert signal.direction == 1
@@ -1776,9 +2093,7 @@ class TestBOSOrderBlockStrategyExtended:
         strategy = BOSOrderBlockStrategy()
         data = sample_ohlcv
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Simulate OB details
         idx = data.index[100]
@@ -1786,12 +2101,10 @@ class TestBOSOrderBlockStrategyExtended:
             "timestamp": data.index[95],
             "ob_high": data.loc[data.index[95], "high"],
             "ob_low": data.loc[data.index[95], "low"],
-            "invalidated": False
+            "invalidated": False,
         }
 
-        signal = strategy._create_short_signal(
-            data, idx, ob_details, swing_lows
-        )
+        signal = strategy._create_short_signal(data, idx, ob_details, swing_lows)
 
         if signal is not None:
             assert signal.direction == -1
@@ -1807,24 +2120,20 @@ class TestBOSOrderBlockStrategyExtended:
         strategy = BOSOrderBlockStrategy()
         data = sample_ohlcv
 
-        swing_highs, _ = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, _ = find_swing_points(data["high"], data["low"], n=5)
 
         # Invalid OB details (should trigger exception handling)
         invalid_ob = {
             "timestamp": pd.Timestamp("2025-01-01"),  # Future date
             "ob_high": 100,
             "ob_low": 99,
-            "invalidated": False
+            "invalidated": False,
         }
 
         invalid_idx = pd.Timestamp("2025-01-02")
 
         # Should return None on exception
-        signal = strategy._create_long_signal(
-            data, invalid_idx, invalid_ob, swing_highs
-        )
+        signal = strategy._create_long_signal(data, invalid_idx, invalid_ob, swing_highs)
 
         assert signal is None
 
@@ -1870,13 +2179,16 @@ class TestBOSOrderBlockStrategyExtended:
         # Strong consistent uptrend
         prices = list(range(100, 160))
 
-        data = pd.DataFrame({
-            "open": prices,
-            "high": [p + 1 for p in prices],
-            "low": [p - 1 for p in prices],
-            "close": prices,
-            "volume": [1000] * 60
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + 1 for p in prices],
+                "low": [p - 1 for p in prices],
+                "close": prices,
+                "volume": [1000] * 60,
+            },
+            index=dates,
+        )
 
         conf = strategy.calculate_confidence(data, 50)
 
@@ -1893,13 +2205,16 @@ class TestBOSOrderBlockStrategyExtended:
         # Volume spike at index 40
         volumes = [1000] * 40 + [3000] + [1000] * 9
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": volumes
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": volumes,
+            },
+            index=dates,
+        )
 
         conf_spike = strategy.calculate_confidence(data, 40)
         conf_normal = strategy.calculate_confidence(data, 30)
@@ -1914,13 +2229,16 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # Low volatility data
-        data = pd.DataFrame({
-            "open": [100 + i * 0.1 for i in range(50)],
-            "high": [100.2 + i * 0.1 for i in range(50)],
-            "low": [99.8 + i * 0.1 for i in range(50)],
-            "close": [100 + i * 0.1 for i in range(50)],
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100 + i * 0.1 for i in range(50)],
+                "high": [100.2 + i * 0.1 for i in range(50)],
+                "low": [99.8 + i * 0.1 for i in range(50)],
+                "close": [100 + i * 0.1 for i in range(50)],
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         conf = strategy.calculate_confidence(data, 40)
 
@@ -1934,13 +2252,16 @@ class TestBOSOrderBlockStrategyExtended:
 
         dates = pd.date_range("2024-01-01", periods=20, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 120)),
-            "high": list(range(101, 121)),
-            "low": list(range(99, 119)),
-            "close": list(range(100, 120)),
-            "volume": [1000] * 20
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 120)),
+                "high": list(range(101, 121)),
+                "low": list(range(99, 119)),
+                "close": list(range(100, 120)),
+                "volume": [1000] * 20,
+            },
+            index=dates,
+        )
 
         # Signal at index 5 (< 10 bars)
         conf = strategy.calculate_confidence(data, 5)
@@ -1965,21 +2286,19 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # Create data where price retests OB high exactly
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # Simulate OB with specific boundaries
-        ob = {
-            "timestamp": dates[10],
-            "ob_high": 115.0,
-            "ob_low": 113.0,
-            "invalidated": False
-        }
+        ob = {"timestamp": dates[10], "ob_high": 115.0, "ob_low": 113.0, "invalidated": False}
 
         # Manually modify data to have exact retest
         data.loc[dates[30], "low"] = 113.0  # Touches OB low exactly
@@ -1987,15 +2306,12 @@ class TestBOSOrderBlockStrategyExtended:
 
         from core.market_structure import find_swing_points
 
-        swing_highs, swing_lows = find_swing_points(
-            data["high"], data["low"], n=5
-        )
+        swing_highs, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
         # Test retest detection
         from core.order_blocks import find_order_blocks
-        bullish_ob, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"]
-        )
+
+        bullish_ob, _ = find_order_blocks(data["open"], data["high"], data["low"], data["close"])
 
         if len(bullish_ob) > 0:
             signal = strategy._wait_for_retest(
@@ -2012,28 +2328,24 @@ class TestBOSOrderBlockStrategyExtended:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
-        ob = {
-            "timestamp": dates[10],
-            "ob_high": 115.0,
-            "ob_low": 113.0,
-            "invalidated": False
-        }
+        ob = {"timestamp": dates[10], "ob_high": 115.0, "ob_low": 113.0, "invalidated": False}
 
         from core.market_structure import find_swing_points
         from core.order_blocks import find_order_blocks
 
         swing_highs, _ = find_swing_points(data["high"], data["low"], n=5)
-        bullish_ob, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"]
-        )
+        bullish_ob, _ = find_order_blocks(data["open"], data["high"], data["low"], data["close"])
 
         if len(bullish_ob) > 0:
             # BOS at index 20, validity is 10 bars
@@ -2051,29 +2363,30 @@ class TestBOSOrderBlockStrategyExtended:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         # Invalidated OB
         ob = {
             "timestamp": dates[10],
             "ob_high": 115.0,
             "ob_low": 113.0,
-            "invalidated": True  # Invalidated
+            "invalidated": True,  # Invalidated
         }
 
         from core.market_structure import find_swing_points
         from core.order_blocks import find_order_blocks
 
         swing_highs, _ = find_swing_points(data["high"], data["low"], n=5)
-        bullish_ob, _ = find_order_blocks(
-            data["open"], data["high"], data["low"], data["close"]
-        )
+        bullish_ob, _ = find_order_blocks(data["open"], data["high"], data["low"], data["close"])
 
         # Even if price retests, should not generate signal
         # (wait_for_retest doesn't check invalidated, but strategy flow should)
@@ -2086,17 +2399,29 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=100, freq="1h")
 
         # Create stepwise uptrend with multiple BOS
-        prices = [100] * 10 + [105] * 10 + [110] * 10 + [115] * 10 + \
-                 [120] * 10 + [125] * 10 + [130] * 10 + [135] * 10 + \
-                 [140] * 10 + [145] * 10
+        prices = (
+            [100] * 10
+            + [105] * 10
+            + [110] * 10
+            + [115] * 10
+            + [120] * 10
+            + [125] * 10
+            + [130] * 10
+            + [135] * 10
+            + [140] * 10
+            + [145] * 10
+        )
 
-        data = pd.DataFrame({
-            "open": prices,
-            "high": [p + 1 for p in prices],
-            "low": [p - 1 for p in prices],
-            "close": prices,
-            "volume": [1000] * 100
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + 1 for p in prices],
+                "low": [p - 1 for p in prices],
+                "close": prices,
+                "volume": [1000] * 100,
+            },
+            index=dates,
+        )
 
         signals = strategy.generate_signals(data)
 
@@ -2139,24 +2464,22 @@ class TestBOSOrderBlockStrategyExtended:
         # Create data with clear swing high
         prices = list(range(100, 130)) + [128] * 8 + list(range(128, 140))
 
-        data = pd.DataFrame({
-            "open": prices,
-            "high": [p + 2 for p in prices],
-            "low": [p - 1 for p in prices],
-            "close": prices,
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + 2 for p in prices],
+                "low": [p - 1 for p in prices],
+                "close": prices,
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         from core.market_structure import find_swing_points
 
         swing_highs, _ = find_swing_points(data["high"], data["low"], n=5)
 
-        ob = {
-            "timestamp": dates[10],
-            "ob_high": 112.0,
-            "ob_low": 110.0,
-            "invalidated": False
-        }
+        ob = {"timestamp": dates[10], "ob_high": 112.0, "ob_low": 110.0, "invalidated": False}
 
         # Create signal at index 35
         signal = strategy._create_long_signal(data, dates[35], ob, swing_highs)
@@ -2176,24 +2499,22 @@ class TestBOSOrderBlockStrategyExtended:
         # Downtrend with swing lows
         prices = list(range(150, 120, -1)) + [122] * 8 + list(range(122, 110, -1))
 
-        data = pd.DataFrame({
-            "open": prices,
-            "high": [p + 1 for p in prices],
-            "low": [p - 2 for p in prices],
-            "close": prices,
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": prices,
+                "high": [p + 1 for p in prices],
+                "low": [p - 2 for p in prices],
+                "close": prices,
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         from core.market_structure import find_swing_points
 
         _, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
-        ob = {
-            "timestamp": dates[10],
-            "ob_high": 148.0,
-            "ob_low": 146.0,
-            "invalidated": False
-        }
+        ob = {"timestamp": dates[10], "ob_high": 148.0, "ob_low": 146.0, "invalidated": False}
 
         signal = strategy._create_short_signal(data, dates[35], ob, swing_lows)
 
@@ -2232,24 +2553,22 @@ class TestBOSOrderBlockStrategyExtended:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(100, 150)),
-            "high": list(range(101, 151)),
-            "low": list(range(99, 149)),
-            "close": list(range(100, 150)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(100, 150)),
+                "high": list(range(101, 151)),
+                "low": list(range(99, 149)),
+                "close": list(range(100, 150)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         from core.market_structure import find_swing_points
 
         swing_highs, _ = find_swing_points(data["high"], data["low"], n=5)
 
-        ob = {
-            "timestamp": dates[10],
-            "ob_high": 112.0,
-            "ob_low": 110.0,
-            "invalidated": False
-        }
+        ob = {"timestamp": dates[10], "ob_high": 112.0, "ob_low": 110.0, "invalidated": False}
 
         signal = strategy._create_long_signal(data, dates[30], ob, swing_highs)
 
@@ -2265,24 +2584,22 @@ class TestBOSOrderBlockStrategyExtended:
 
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
-        data = pd.DataFrame({
-            "open": list(range(150, 100, -1)),
-            "high": list(range(151, 101, -1)),
-            "low": list(range(149, 99, -1)),
-            "close": list(range(150, 100, -1)),
-            "volume": [1000] * 50
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": list(range(150, 100, -1)),
+                "high": list(range(151, 101, -1)),
+                "low": list(range(149, 99, -1)),
+                "close": list(range(150, 100, -1)),
+                "volume": [1000] * 50,
+            },
+            index=dates,
+        )
 
         from core.market_structure import find_swing_points
 
         _, swing_lows = find_swing_points(data["high"], data["low"], n=5)
 
-        ob = {
-            "timestamp": dates[10],
-            "ob_high": 142.0,
-            "ob_low": 140.0,
-            "invalidated": False
-        }
+        ob = {"timestamp": dates[10], "ob_high": 142.0, "ob_low": 140.0, "invalidated": False}
 
         signal = strategy._create_short_signal(data, dates[30], ob, swing_lows)
 
@@ -2299,11 +2616,14 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=100, freq="1h")
 
         # Create dummy OB DataFrame
-        ob_data = pd.DataFrame({
-            "ob_high": [105, 110, 115, 120, 125],
-            "ob_low": [103, 108, 113, 118, 123],
-            "invalidated": [False, False, False, False, False]
-        }, index=[dates[10], dates[20], dates[30], dates[40], dates[50]])
+        ob_data = pd.DataFrame(
+            {
+                "ob_high": [105, 110, 115, 120, 125],
+                "ob_low": [103, 108, 113, 118, 123],
+                "invalidated": [False, False, False, False, False],
+            },
+            index=[dates[10], dates[20], dates[30], dates[40], dates[50]],
+        )
 
         # BOS at index 60
         bos_idx = dates[60]
@@ -2327,11 +2647,9 @@ class TestBOSOrderBlockStrategyExtended:
         dates = pd.date_range("2024-01-01", periods=50, freq="1h")
 
         # OB after BOS (invalid scenario)
-        ob_data = pd.DataFrame({
-            "ob_high": [125],
-            "ob_low": [123],
-            "invalidated": [False]
-        }, index=[dates[30]])
+        ob_data = pd.DataFrame(
+            {"ob_high": [125], "ob_low": [123], "invalidated": [False]}, index=[dates[30]]
+        )
 
         # BOS at index 20 (before OB)
         bos_idx = dates[20]

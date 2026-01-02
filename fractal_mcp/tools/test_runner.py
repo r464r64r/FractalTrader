@@ -7,7 +7,7 @@ Executes pytest tests and returns formatted results.
 import subprocess
 from typing import Any
 
-from fractal_mcp.config import DEFAULT_TEST_PATH, USE_DOCKER, DOCKER_CONTAINER_NAME
+from fractal_mcp.config import DEFAULT_TEST_PATH, DOCKER_CONTAINER_NAME, USE_DOCKER
 
 
 def run_tests(test_path: str = DEFAULT_TEST_PATH) -> dict[str, Any]:
@@ -27,22 +27,21 @@ def run_tests(test_path: str = DEFAULT_TEST_PATH) -> dict[str, Any]:
     try:
         if USE_DOCKER:
             cmd = [
-                "docker", "exec", DOCKER_CONTAINER_NAME,
-                "python", "-m", "pytest", test_path,
-                "-v", "--tb=short", "--color=no"
+                "docker",
+                "exec",
+                DOCKER_CONTAINER_NAME,
+                "python",
+                "-m",
+                "pytest",
+                test_path,
+                "-v",
+                "--tb=short",
+                "--color=no",
             ]
         else:
-            cmd = [
-                "python", "-m", "pytest", test_path,
-                "-v", "--tb=short", "--color=no"
-            ]
+            cmd = ["python", "-m", "pytest", test_path, "-v", "--tb=short", "--color=no"]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
         output = result.stdout + result.stderr
 
@@ -73,7 +72,7 @@ def run_tests(test_path: str = DEFAULT_TEST_PATH) -> dict[str, Any]:
             "passed": all_passed,
             "total": total_count,
             "failed": failed_count,
-            "output": output
+            "output": output,
         }
 
     except subprocess.TimeoutExpired:
@@ -81,14 +80,14 @@ def run_tests(test_path: str = DEFAULT_TEST_PATH) -> dict[str, Any]:
             "passed": False,
             "total": 0,
             "failed": 0,
-            "output": "Error: Test execution timed out after 120 seconds"
+            "output": "Error: Test execution timed out after 120 seconds",
         }
     except Exception as e:
         return {
             "passed": False,
             "total": 0,
             "failed": 0,
-            "output": f"Error running tests: {str(e)}"
+            "output": f"Error running tests: {str(e)}",
         }
 
 

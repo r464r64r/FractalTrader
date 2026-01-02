@@ -1,24 +1,22 @@
 """Hyperliquid data fetcher using native SDK."""
 
-import pandas as pd
-from typing import Optional, Literal
-from datetime import datetime, timezone
-import time
 import logging
+import time
+from typing import Literal
 
+import pandas as pd
 from hyperliquid.info import Info
 from hyperliquid.utils import constants
+from ratelimit import limits, sleep_and_retry
 from tenacity import (
+    before_sleep_log,
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log
 )
-from ratelimit import limits, sleep_and_retry
 
 from data.fetcher import BaseFetcher
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,21 +40,17 @@ class HyperliquidFetcher(BaseFetcher):
 
     # Hyperliquid timeframe mapping
     TIMEFRAME_MAP = {
-        '1m': '1m',
-        '5m': '5m',
-        '15m': '15m',
-        '1h': '1h',
-        '4h': '4h',
-        '1d': '1d',
+        "1m": "1m",
+        "5m": "5m",
+        "15m": "15m",
+        "1h": "1h",
+        "4h": "4h",
+        "1d": "1d",
     }
 
     MAX_CANDLES = 5000  # Hyperliquid API limit
 
-    def __init__(
-        self,
-        network: Literal['mainnet', 'testnet'] = 'mainnet',
-        timeout: int = 30
-    ):
+    def __init__(self, network: Literal["mainnet", "testnet"] = "mainnet", timeout: int = 30):
         """
         Initialize Hyperliquid fetcher.
 
@@ -65,7 +59,7 @@ class HyperliquidFetcher(BaseFetcher):
             timeout: Request timeout in seconds
         """
         self.network = network
-        api_url = self.MAINNET_URL if network == 'mainnet' else self.TESTNET_URL
+        api_url = self.MAINNET_URL if network == "mainnet" else self.TESTNET_URL
 
         self.info = Info(api_url, skip_ws=True)  # No WebSocket for now
         self.timeout = timeout
@@ -75,9 +69,9 @@ class HyperliquidFetcher(BaseFetcher):
     def fetch_ohlcv(
         self,
         symbol: str,
-        timeframe: str = '1h',
-        limit: Optional[int] = None,
-        since: Optional[str] = None
+        timeframe: str = "1h",
+        limit: int | None = None,
+        since: str | None = None,
     ) -> pd.DataFrame:
         """
         Fetch OHLCV data from Hyperliquid.
@@ -129,10 +123,7 @@ class HyperliquidFetcher(BaseFetcher):
 
         # Fetch data from Hyperliquid (with retry logic)
         candles = self._fetch_candles_with_retry(
-            symbol=symbol,
-            interval=hl_timeframe,
-            start_time=start_time,
-            end_time=end_time
+            symbol=symbol, interval=hl_timeframe, start_time=start_time, end_time=end_time
         )
 
         if not candles:
@@ -159,14 +150,10 @@ class HyperliquidFetcher(BaseFetcher):
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type((ConnectionError, TimeoutError)),
         before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True
+        reraise=True,
     )
     def _fetch_candles_with_retry(
-        self,
-        symbol: str,
-        interval: str,
-        start_time: int,
-        end_time: int
+        self, symbol: str, interval: str, start_time: int, end_time: int
     ) -> list:
         """
         Fetch candles with automatic retry on network errors.
@@ -185,10 +172,7 @@ class HyperliquidFetcher(BaseFetcher):
         """
         try:
             candles = self.info.candles_snapshot(
-                name=symbol,
-                interval=interval,
-                startTime=start_time,
-                endTime=end_time
+                name=symbol, interval=interval, startTime=start_time, endTime=end_time
             )
             return candles
         except Exception as e:
@@ -240,12 +224,12 @@ class HyperliquidFetcher(BaseFetcher):
         """
         # Timeframe to milliseconds
         tf_to_ms = {
-            '1m': 60 * 1000,
-            '5m': 5 * 60 * 1000,
-            '15m': 15 * 60 * 1000,
-            '1h': 60 * 60 * 1000,
-            '4h': 4 * 60 * 60 * 1000,
-            '1d': 24 * 60 * 60 * 1000,
+            "1m": 60 * 1000,
+            "5m": 5 * 60 * 1000,
+            "15m": 15 * 60 * 1000,
+            "1h": 60 * 60 * 1000,
+            "4h": 4 * 60 * 60 * 1000,
+            "1d": 24 * 60 * 60 * 1000,
         }
 
         interval_ms = tf_to_ms[timeframe]
@@ -283,20 +267,22 @@ class HyperliquidFetcher(BaseFetcher):
 
         data = []
         for candle in candles:
-            data.append({
-                'timestamp': candle['t'],
-                'open': float(candle['o']),
-                'high': float(candle['h']),
-                'low': float(candle['l']),
-                'close': float(candle['c']),
-                'volume': float(candle['v']),
-            })
+            data.append(
+                {
+                    "timestamp": candle["t"],
+                    "open": float(candle["o"]),
+                    "high": float(candle["h"]),
+                    "low": float(candle["l"]),
+                    "close": float(candle["c"]),
+                    "volume": float(candle["v"]),
+                }
+            )
 
         df = pd.DataFrame(data)
 
         # Convert timestamp to datetime index
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms', utc=True)
-        df.set_index('timestamp', inplace=True)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+        df.set_index("timestamp", inplace=True)
 
         # Sort by time
         df.sort_index(inplace=True)
@@ -305,8 +291,8 @@ class HyperliquidFetcher(BaseFetcher):
 
     def _empty_dataframe(self) -> pd.DataFrame:
         """Return empty DataFrame with correct format."""
-        df = pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume'])
-        df.index = pd.DatetimeIndex([], name='timestamp')
+        df = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
+        df.index = pd.DatetimeIndex([], name="timestamp")
         return df
 
     @sleep_and_retry
@@ -320,8 +306,8 @@ class HyperliquidFetcher(BaseFetcher):
         """
         try:
             meta = self.info.meta()
-            universe = meta.get('universe', [])
-            return [coin['name'] for coin in universe]
+            universe = meta.get("universe", [])
+            return [coin["name"] for coin in universe]
         except Exception as e:
             logger.error(f"Failed to fetch symbols: {e}")
             return []
@@ -333,7 +319,7 @@ class HyperliquidFetcher(BaseFetcher):
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type((ConnectionError, TimeoutError)),
         before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True
+        reraise=True,
     )
     def get_current_price(self, symbol: str) -> float:
         """

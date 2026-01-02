@@ -5,14 +5,12 @@ Trade returns to Fair Value Gaps (imbalances). FVGs represent aggressive
 institutional moves. Price often returns to "fill" these gaps before continuing.
 """
 
-from typing import Optional
-import pandas as pd
-import numpy as np
 
+import pandas as pd
+
+from core.imbalance import check_fvg_fill, find_fair_value_gaps
+from core.market_structure import determine_trend, find_swing_points
 from strategies.base import BaseStrategy, Signal
-from core.imbalance import find_fair_value_gaps, check_fvg_fill, get_active_fvgs, calculate_fvg_size
-from core.market_structure import find_swing_points, determine_trend
-from risk.confidence import ConfidenceFactors
 
 
 class FVGFillStrategy(BaseStrategy):
@@ -34,12 +32,12 @@ class FVGFillStrategy(BaseStrategy):
     """
 
     DEFAULT_PARAMS = {
-        "min_gap_percent": 0.002,    # Minimum 0.2% gap size
-        "max_gap_age_bars": 50,      # Ignore gaps older than 50 bars
-        "partial_fill_percent": 0.5, # Enter when gap 50% filled
-        "min_rr_ratio": 1.5,         # Minimum risk:reward
-        "swing_period": 5,           # For trend detection
-        "atr_period": 14,            # For volatility
+        "min_gap_percent": 0.002,  # Minimum 0.2% gap size
+        "max_gap_age_bars": 50,  # Ignore gaps older than 50 bars
+        "partial_fill_percent": 0.5,  # Enter when gap 50% filled
+        "min_rr_ratio": 1.5,  # Minimum risk:reward
+        "swing_period": 5,  # For trend detection
+        "atr_period": 14,  # For volatility
     }
 
     def __init__(self, params: dict | None = None):
@@ -62,9 +60,7 @@ class FVGFillStrategy(BaseStrategy):
 
         # 1. Find all FVGs
         bullish_fvg, bearish_fvg = find_fair_value_gaps(
-            data["high"],
-            data["low"],
-            min_gap_percent=self.params["min_gap_percent"]
+            data["high"], data["low"], min_gap_percent=self.params["min_gap_percent"]
         )
 
         # 2. Track fills
@@ -73,7 +69,7 @@ class FVGFillStrategy(BaseStrategy):
             data["low"],
             bullish_fvg.copy(),  # Copy to avoid modifying original
             fill_type="partial",
-            partial_percent=self.params["partial_fill_percent"]
+            partial_percent=self.params["partial_fill_percent"],
         )
 
         bearish_fills = check_fvg_fill(
@@ -81,7 +77,7 @@ class FVGFillStrategy(BaseStrategy):
             data["low"],
             bearish_fvg.copy(),
             fill_type="partial",
-            partial_percent=self.params["partial_fill_percent"]
+            partial_percent=self.params["partial_fill_percent"],
         )
 
         # 3. Generate signals on fills
@@ -103,11 +99,8 @@ class FVGFillStrategy(BaseStrategy):
         return signals
 
     def _create_long_signal(
-        self,
-        data: pd.DataFrame,
-        idx: pd.Timestamp,
-        fvg_zones: pd.DataFrame
-    ) -> Optional[Signal]:
+        self, data: pd.DataFrame, idx: pd.Timestamp, fvg_zones: pd.DataFrame
+    ) -> Signal | None:
         """
         Create a long signal on bullish FVG fill.
 
@@ -164,18 +157,15 @@ class FVGFillStrategy(BaseStrategy):
                 metadata={
                     "fvg_high": gap_high,
                     "fvg_low": gap_low,
-                    "signal_type": "bullish_fvg_fill"
-                }
+                    "signal_type": "bullish_fvg_fill",
+                },
             )
         except Exception:
             return None
 
     def _create_short_signal(
-        self,
-        data: pd.DataFrame,
-        idx: pd.Timestamp,
-        fvg_zones: pd.DataFrame
-    ) -> Optional[Signal]:
+        self, data: pd.DataFrame, idx: pd.Timestamp, fvg_zones: pd.DataFrame
+    ) -> Signal | None:
         """
         Create a short signal on bearish FVG fill.
 
@@ -232,8 +222,8 @@ class FVGFillStrategy(BaseStrategy):
                 metadata={
                     "fvg_high": gap_high,
                     "fvg_low": gap_low,
-                    "signal_type": "bearish_fvg_fill"
-                }
+                    "signal_type": "bearish_fvg_fill",
+                },
             )
         except Exception:
             return None
@@ -261,16 +251,14 @@ class FVGFillStrategy(BaseStrategy):
         try:
             # Get recent data for analysis
             lookback = min(50, signal_idx)
-            recent_data = data.iloc[max(0, signal_idx - lookback):signal_idx + 1]
+            recent_data = data.iloc[max(0, signal_idx - lookback) : signal_idx + 1]
 
             if len(recent_data) < 10:
                 return 50  # Default confidence for insufficient data
 
             # 1. Trend alignment (0-30 points)
             swing_h, swing_l = find_swing_points(
-                recent_data["high"],
-                recent_data["low"],
-                n=min(5, len(recent_data) // 4)
+                recent_data["high"], recent_data["low"], n=min(5, len(recent_data) // 4)
             )
             trend = determine_trend(swing_h, swing_l)
 

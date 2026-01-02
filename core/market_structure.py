@@ -8,16 +8,13 @@ This module provides functions for detecting:
 - Market trend based on swing point sequences
 """
 
-import pandas as pd
-import numpy as np
 from typing import Literal
 
+import numpy as np
+import pandas as pd
 
-def find_swing_points(
-    high: pd.Series,
-    low: pd.Series,
-    n: int = 5
-) -> tuple[pd.Series, pd.Series]:
+
+def find_swing_points(high: pd.Series, low: pd.Series, n: int = 5) -> tuple[pd.Series, pd.Series]:
     """
     Identify swing highs and swing lows.
 
@@ -48,15 +45,15 @@ def find_swing_points(
 
     for i in range(n, len(high) - n):
         # Check swing high: current high > all highs in window on both sides
-        left_highs = high_values[i - n:i]
-        right_highs = high_values[i + 1:i + n + 1]
+        left_highs = high_values[i - n : i]
+        right_highs = high_values[i + 1 : i + n + 1]
 
         if high_values[i] > left_highs.max() and high_values[i] > right_highs.max():
             swing_highs.iloc[i] = high_values[i]
 
         # Check swing low: current low < all lows in window on both sides
-        left_lows = low_values[i - n:i]
-        right_lows = low_values[i + 1:i + n + 1]
+        left_lows = low_values[i - n : i]
+        right_lows = low_values[i + 1 : i + n + 1]
 
         if low_values[i] < left_lows.min() and low_values[i] < right_lows.min():
             swing_lows.iloc[i] = low_values[i]
@@ -64,10 +61,7 @@ def find_swing_points(
     return swing_highs, swing_lows
 
 
-def determine_trend(
-    swing_highs: pd.Series,
-    swing_lows: pd.Series
-) -> pd.Series:
+def determine_trend(swing_highs: pd.Series, swing_lows: pd.Series) -> pd.Series:
     """
     Determine market trend based on swing point sequence.
 
@@ -142,16 +136,16 @@ def determine_trend(
     trend = trend.replace(0, np.nan).ffill().fillna(0).astype(int)
 
     # Fix: only replace zeros after first swing point
-    first_swing_idx = min(swing_points[0]["idx"] if swing_points else trend.index[0], trend.index[0])
+    first_swing_idx = min(
+        swing_points[0]["idx"] if swing_points else trend.index[0], trend.index[0]
+    )
     trend.loc[:first_swing_idx] = 0
 
     return trend
 
 
 def detect_structure_breaks(
-    close: pd.Series,
-    swing_highs: pd.Series,
-    swing_lows: pd.Series
+    close: pd.Series, swing_highs: pd.Series, swing_lows: pd.Series
 ) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
     Detect Break of Structure (BOS) and Change of Character (CHoCH) events.
@@ -247,9 +241,7 @@ def detect_structure_breaks(
 
 
 def get_swing_sequence(
-    swing_highs: pd.Series,
-    swing_lows: pd.Series,
-    lookback: int | None = None
+    swing_highs: pd.Series, swing_lows: pd.Series, lookback: int | None = None
 ) -> pd.DataFrame:
     """
     Get a chronological sequence of swing points.
@@ -286,7 +278,7 @@ def get_swing_sequence(
 def find_recent_swing_level(
     swing_series: pd.Series,
     current_idx: pd.Timestamp,
-    direction: Literal["above", "below"] = "above"
+    direction: Literal["above", "below"] = "above",
 ) -> float | None:
     """
     Find the most recent swing level before current index.

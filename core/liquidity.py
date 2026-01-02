@@ -9,16 +9,14 @@ These patterns reveal where institutions hunt retail stop losses
 before making significant moves.
 """
 
-import pandas as pd
-import numpy as np
 from typing import Literal
+
+import numpy as np
+import pandas as pd
 
 
 def find_equal_levels(
-    highs: pd.Series,
-    lows: pd.Series,
-    tolerance: float = 0.001,
-    min_touches: int = 2
+    highs: pd.Series, lows: pd.Series, tolerance: float = 0.001, min_touches: int = 2
 ) -> tuple[pd.Series, pd.Series]:
     """
     Find equal highs and equal lows (liquidity pools).
@@ -58,10 +56,7 @@ def find_equal_levels(
 
 
 def _find_clustered_levels(
-    levels: pd.Series,
-    tolerance: float,
-    min_touches: int,
-    full_index: pd.Index
+    levels: pd.Series, tolerance: float, min_touches: int, full_index: pd.Index
 ) -> pd.Series:
     """
     Find clustered price levels within tolerance.
@@ -116,7 +111,7 @@ def detect_liquidity_sweep(
     close: pd.Series,
     liquidity_levels: pd.Series,
     reversal_bars: int = 3,
-    direction: Literal["bullish", "bearish", "both"] = "both"
+    direction: Literal["bullish", "bearish", "both"] = "both",
 ) -> pd.Series:
     """
     Detect liquidity sweeps (stop hunts).
@@ -201,9 +196,7 @@ def detect_liquidity_sweep(
 
 
 def find_liquidity_zones(
-    swing_highs: pd.Series,
-    swing_lows: pd.Series,
-    tolerance: float = 0.001
+    swing_highs: pd.Series, swing_lows: pd.Series, tolerance: float = 0.001
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Find all liquidity zones (areas of clustered highs or lows).
@@ -223,10 +216,7 @@ def find_liquidity_zones(
     return high_zones, low_zones
 
 
-def _calculate_zones(
-    levels: pd.Series,
-    tolerance: float
-) -> pd.DataFrame:
+def _calculate_zones(levels: pd.Series, tolerance: float) -> pd.DataFrame:
     """Calculate liquidity zones from swing levels."""
     columns = ["level_price", "first_touch", "last_touch", "touch_count"]
 
@@ -252,12 +242,14 @@ def _calculate_zones(
             cluster_prices = values[cluster_indices]
             cluster_times = [indices[j] for j in cluster_indices]
 
-            zones.append({
-                "level_price": np.mean(cluster_prices),
-                "first_touch": min(cluster_times),
-                "last_touch": max(cluster_times),
-                "touch_count": len(cluster_indices)
-            })
+            zones.append(
+                {
+                    "level_price": np.mean(cluster_prices),
+                    "first_touch": min(cluster_times),
+                    "last_touch": max(cluster_times),
+                    "touch_count": len(cluster_indices),
+                }
+            )
 
     return pd.DataFrame(zones)
 
@@ -267,7 +259,7 @@ def get_nearest_liquidity(
     swing_highs: pd.Series,
     swing_lows: pd.Series,
     current_idx: pd.Timestamp,
-    direction: Literal["above", "below", "both"] = "both"
+    direction: Literal["above", "below", "both"] = "both",
 ) -> dict | None:
     """
     Find the nearest liquidity level to current price.
@@ -291,20 +283,12 @@ def get_nearest_liquidity(
     if direction in ("above", "both"):
         for level in prior_highs.values:
             if level > price:
-                candidates.append({
-                    "price": level,
-                    "distance": level - price,
-                    "type": "swing_high"
-                })
+                candidates.append({"price": level, "distance": level - price, "type": "swing_high"})
 
     if direction in ("below", "both"):
         for level in prior_lows.values:
             if level < price:
-                candidates.append({
-                    "price": level,
-                    "distance": price - level,
-                    "type": "swing_low"
-                })
+                candidates.append({"price": level, "distance": price - level, "type": "swing_low"})
 
     if not candidates:
         return None

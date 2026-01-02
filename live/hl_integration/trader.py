@@ -1,13 +1,12 @@
 """Hyperliquid mainnet live trading."""
 
 import logging
-from typing import Optional
+
 from hyperliquid.utils import constants
 
-from live.hl_integration.testnet import HyperliquidTestnetTrader
 from live.hl_integration.config import HyperliquidConfig
+from live.hl_integration.testnet import HyperliquidTestnetTrader
 from strategies.base import BaseStrategy
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,12 +25,7 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
     Inherits from TestnetTrader (same logic, different network).
     """
 
-    def __init__(
-        self,
-        config: HyperliquidConfig,
-        strategy: BaseStrategy,
-        confirm: bool = False
-    ):
+    def __init__(self, config: HyperliquidConfig, strategy: BaseStrategy, confirm: bool = False):
         """
         Initialize mainnet trader.
 
@@ -44,7 +38,7 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
             ValueError: If config.network != 'mainnet'
             RuntimeError: If mainnet trading not confirmed
         """
-        if config.network != 'mainnet':
+        if config.network != "mainnet":
             raise ValueError("HyperliquidTrader requires network='mainnet'")
 
         # Safety check: require explicit confirmation
@@ -58,7 +52,7 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
             print("=" * 60)
 
             confirmation = input("Type 'CONFIRM' to proceed with mainnet trading: ")
-            if confirmation != 'CONFIRM':
+            if confirmation != "CONFIRM":
                 raise RuntimeError("Mainnet trading not confirmed")
 
         # Initialize parent class (TestnetTrader logic)
@@ -69,26 +63,29 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
 
         # Setup wallet
         from eth_account import Account
+
         self.wallet = Account.from_key(config.private_key)
         logger.info(f"Mainnet wallet address: {self.wallet.address}")
 
         # Initialize Hyperliquid clients (MAINNET!)
-        from hyperliquid.info import Info
         from hyperliquid.exchange import Exchange
+        from hyperliquid.info import Info
 
         self.info = Info(constants.MAINNET_API_URL, skip_ws=True)
         self.exchange = Exchange(self.wallet, constants.MAINNET_API_URL)
 
         # Initialize data fetcher
         from data.hyperliquid_fetcher import HyperliquidFetcher
-        self.fetcher = HyperliquidFetcher(network='mainnet')
+
+        self.fetcher = HyperliquidFetcher(network="mainnet")
 
         # Risk parameters
         from risk.position_sizing import RiskParameters
+
         self.risk_params = RiskParameters(
             base_risk_percent=config.base_risk_percent,
             max_position_percent=config.max_position_percent,
-            min_confidence=config.min_confidence
+            min_confidence=config.min_confidence,
         )
 
         # State tracking

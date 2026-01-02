@@ -2,21 +2,19 @@
 
 import logging
 import time
-from typing import Optional, Dict, List
 from datetime import datetime
 
 from eth_account import Account
-from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
+from hyperliquid.info import Info
 from hyperliquid.utils import constants
 from ratelimit import limits, sleep_and_retry
 
 from data.hyperliquid_fetcher import HyperliquidFetcher
-from strategies.base import BaseStrategy, Signal
-from risk.position_sizing import calculate_position_size, RiskParameters
 from live.hl_integration.config import HyperliquidConfig
 from live.state_manager import StateManager
-
+from risk.position_sizing import RiskParameters, calculate_position_size
+from strategies.base import BaseStrategy, Signal
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +25,7 @@ class TransientError(Exception):
 
     Examples: network timeout, temporary API unavailability, rate limit hit
     """
+
     pass
 
 
@@ -36,6 +35,7 @@ class CriticalError(Exception):
 
     Examples: invalid credentials, account locked, insufficient funds
     """
+
     pass
 
 
@@ -56,7 +56,7 @@ class HyperliquidTestnetTrader:
         self,
         config: HyperliquidConfig,
         strategy: BaseStrategy,
-        state_file: str = '.testnet_state.json'
+        state_file: str = ".testnet_state.json",
     ):
         """
         Initialize testnet trader.
@@ -69,7 +69,7 @@ class HyperliquidTestnetTrader:
         Raises:
             ValueError: If config.network != 'testnet'
         """
-        if config.network != 'testnet':
+        if config.network != "testnet":
             raise ValueError("TestnetTrader requires network='testnet'")
 
         config.validate()
@@ -86,25 +86,21 @@ class HyperliquidTestnetTrader:
         self.exchange = Exchange(self.wallet, constants.TESTNET_API_URL)
 
         # Initialize data fetcher
-        self.fetcher = HyperliquidFetcher(network='testnet')
+        self.fetcher = HyperliquidFetcher(network="testnet")
 
         # Risk parameters
         self.risk_params = RiskParameters(
             base_risk_percent=config.base_risk_percent,
             max_position_percent=config.max_position_percent,
-            min_confidence=config.min_confidence
+            min_confidence=config.min_confidence,
         )
 
         # Initialize state manager (with persistence)
-        self.state_manager = StateManager(
-            state_file=state_file,
-            auto_save=True,
-            backup_count=5
-        )
+        self.state_manager = StateManager(state_file=state_file, auto_save=True, backup_count=5)
 
         # Load state from previous session (if exists)
-        self.open_positions: Dict = self.state_manager.load_positions()
-        self.trade_history: List[Dict] = self.state_manager.load_trade_history()
+        self.open_positions: dict = self.state_manager.load_positions()
+        self.trade_history: list[dict] = self.state_manager.load_trade_history()
         self.is_running = False
 
         # Set starting balance if not set
@@ -115,24 +111,23 @@ class HyperliquidTestnetTrader:
             logger.info(f"Set starting balance: ${portfolio_value:,.2f}")
         else:
             self.starting_balance = self.state_manager.get_starting_balance()
-            logger.info(
-                f"Resumed session with starting balance: "
-                f"${self.starting_balance:,.2f}"
-            )
+            logger.info(f"Resumed session with starting balance: " f"${self.starting_balance:,.2f}")
 
         # Circuit breakers (testnet-specific safeguards)
         self.max_daily_drawdown = 0.20  # Stop if down 20% (more lenient than mainnet)
-        self.max_daily_trades = 50      # Limit number of trades per day
+        self.max_daily_trades = 50  # Limit number of trades per day
         self.circuit_breaker_triggered = False
 
         logger.info("TestnetTrader initialized")
-        logger.info(f"Circuit breakers: max_drawdown={self.max_daily_drawdown:.1%}, max_trades={self.max_daily_trades}")
+        logger.info(
+            f"Circuit breakers: max_drawdown={self.max_daily_drawdown:.1%}, max_trades={self.max_daily_trades}"
+        )
         if self.open_positions:
             logger.info(f"Loaded {len(self.open_positions)} open positions from previous session")
         if self.trade_history:
             logger.info(f"Loaded {len(self.trade_history)} trades from history")
 
-    def run(self, duration_seconds: Optional[int] = None):
+    def run(self, duration_seconds: int | None = None):
         """
         Run trading loop.
 
@@ -184,7 +179,7 @@ class HyperliquidTestnetTrader:
             data = self.fetcher.fetch_ohlcv(
                 self.config.default_symbol,
                 self.config.default_timeframe,
-                limit=500  # Enough for strategy calculations
+                limit=500,  # Enough for strategy calculations
             )
 
             # 2. Generate signals
@@ -205,10 +200,7 @@ class HyperliquidTestnetTrader:
                 )
                 return
 
-            logger.info(
-                f"Signal: {latest_signal.direction} @ "
-                f"{latest_signal.entry_price:.2f}"
-            )
+            logger.info(f"Signal: {latest_signal.direction} @ " f"{latest_signal.entry_price:.2f}")
 
             # 4. Check if we can open position
             if len(self.open_positions) >= self.config.max_open_positions:
@@ -226,7 +218,7 @@ class HyperliquidTestnetTrader:
                 baseline_atr=self._calculate_baseline_atr(data),
                 consecutive_wins=self._count_consecutive_wins(),
                 consecutive_losses=self._count_consecutive_losses(),
-                params=self.risk_params
+                params=self.risk_params,
             )
 
             if position_size == 0:
@@ -252,7 +244,7 @@ class HyperliquidTestnetTrader:
             error_msg = str(e).lower()
 
             # Check if it's likely a transient error
-            transient_keywords = ['timeout', 'connection', 'network', 'temporary', 'rate limit']
+            transient_keywords = ["timeout", "connection", "network", "temporary", "rate limit"]
             if any(keyword in error_msg for keyword in transient_keywords):
                 logger.warning(f"Likely transient error (retrying): {e}")
                 time.sleep(5)
@@ -338,24 +330,20 @@ class HyperliquidTestnetTrader:
 
             # Place order
             order = self.exchange.order(
-                symbol,
-                is_buy,
-                size,
-                limit_price,
-                {"limit": {"tif": "Gtc"}}  # Good-til-canceled
+                symbol, is_buy, size, limit_price, {"limit": {"tif": "Gtc"}}  # Good-til-canceled
             )
 
             logger.info(f"Order placed: {order}")
 
             # Track position
             position_data = {
-                'signal': signal,
-                'size': size,
-                'entry_price': limit_price,
-                'stop_loss': signal.stop_loss,
-                'take_profit': signal.take_profit,
-                'timestamp': datetime.now(),
-                'order': order
+                "signal": signal,
+                "size": size,
+                "entry_price": limit_price,
+                "stop_loss": signal.stop_loss,
+                "take_profit": signal.take_profit,
+                "timestamp": datetime.now(),
+                "order": order,
             }
             self.open_positions[symbol] = position_data
 
@@ -364,14 +352,14 @@ class HyperliquidTestnetTrader:
 
             # Record trade
             trade_data = {
-                'timestamp': datetime.now(),
-                'symbol': symbol,
-                'direction': 'LONG' if is_buy else 'SHORT',
-                'size': size,
-                'entry_price': limit_price,
-                'stop_loss': signal.stop_loss,
-                'confidence': signal.confidence,
-                'status': 'OPEN'
+                "timestamp": datetime.now(),
+                "symbol": symbol,
+                "direction": "LONG" if is_buy else "SHORT",
+                "size": size,
+                "entry_price": limit_price,
+                "stop_loss": signal.stop_loss,
+                "confidence": signal.confidence,
+                "status": "OPEN",
             }
             self.trade_history.append(trade_data)
 
@@ -382,8 +370,15 @@ class HyperliquidTestnetTrader:
             error_msg = str(e).lower()
 
             # Categorize the error
-            critical_keywords = ['invalid', 'unauthorized', 'forbidden', 'insufficient', 'locked']
-            transient_keywords = ['timeout', 'connection', 'network', 'temporary', 'rate limit', 'unavailable']
+            critical_keywords = ["invalid", "unauthorized", "forbidden", "insufficient", "locked"]
+            transient_keywords = [
+                "timeout",
+                "connection",
+                "network",
+                "temporary",
+                "rate limit",
+                "unavailable",
+            ]
 
             if any(keyword in error_msg for keyword in critical_keywords):
                 raise CriticalError(f"Order placement failed (critical): {e}")
@@ -408,8 +403,8 @@ class HyperliquidTestnetTrader:
 
             # Extract account value
             # Testnet starts with 100,000 USDT
-            margin_summary = user_state.get('marginSummary', {})
-            account_value = float(margin_summary.get('accountValue', 100000))
+            margin_summary = user_state.get("marginSummary", {})
+            account_value = float(margin_summary.get("accountValue", 100000))
 
             return account_value
 
@@ -417,7 +412,7 @@ class HyperliquidTestnetTrader:
             error_msg = str(e).lower()
 
             # Categorize the error
-            transient_keywords = ['timeout', 'connection', 'network', 'temporary', 'unavailable']
+            transient_keywords = ["timeout", "connection", "network", "temporary", "unavailable"]
 
             if any(keyword in error_msg for keyword in transient_keywords):
                 # Transient error - use cached value or default
@@ -431,6 +426,7 @@ class HyperliquidTestnetTrader:
     def _calculate_atr(self, data) -> float:
         """Calculate current ATR (Average True Range)."""
         from strategies.base import BaseStrategy
+
         temp_strategy = BaseStrategy.__new__(BaseStrategy)
         atr = temp_strategy._calculate_atr(data, period=14)
         if atr.empty:
@@ -445,7 +441,7 @@ class HyperliquidTestnetTrader:
         """Count consecutive winning trades."""
         count = 0
         for trade in reversed(self.trade_history):
-            if trade.get('pnl', 0) > 0:
+            if trade.get("pnl", 0) > 0:
                 count += 1
             else:
                 break
@@ -455,7 +451,7 @@ class HyperliquidTestnetTrader:
         """Count consecutive losing trades."""
         count = 0
         for trade in reversed(self.trade_history):
-            if trade.get('pnl', 0) < 0:
+            if trade.get("pnl", 0) < 0:
                 count += 1
             else:
                 break

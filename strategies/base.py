@@ -6,7 +6,7 @@ All strategies inherit from BaseStrategy and implement the signal generation log
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
+
 import pandas as pd
 
 
@@ -30,7 +30,7 @@ class Signal:
     direction: int  # 1 = long, -1 = short
     entry_price: float
     stop_loss: float
-    take_profit: Optional[float] = None
+    take_profit: float | None = None
     confidence: int = 50
     strategy_name: str = ""
     metadata: dict = field(default_factory=dict)
@@ -47,7 +47,7 @@ class Signal:
             raise ValueError(f"Stop loss must be positive, got {self.stop_loss}")
 
     @property
-    def risk_reward_ratio(self) -> Optional[float]:
+    def risk_reward_ratio(self) -> float | None:
         """Calculate risk:reward ratio if take profit is set."""
         if self.take_profit is None:
             return None
@@ -154,11 +154,7 @@ class BaseStrategy(ABC):
 
         return True
 
-    def filter_signals_by_rr(
-        self,
-        signals: list[Signal],
-        min_rr: float = 1.5
-    ) -> list[Signal]:
+    def filter_signals_by_rr(self, signals: list[Signal], min_rr: float = 1.5) -> list[Signal]:
         """
         Filter signals by minimum risk:reward ratio.
 
@@ -172,9 +168,7 @@ class BaseStrategy(ABC):
         return [s for s in signals if s.is_valid_rr(min_rr)]
 
     def filter_signals_by_confidence(
-        self,
-        signals: list[Signal],
-        min_confidence: int = 40
+        self, signals: list[Signal], min_confidence: int = 40
     ) -> list[Signal]:
         """
         Filter signals by minimum confidence score.
@@ -188,11 +182,7 @@ class BaseStrategy(ABC):
         """
         return [s for s in signals if s.confidence >= min_confidence]
 
-    def _calculate_atr(
-        self,
-        data: pd.DataFrame,
-        period: int = 14
-    ) -> pd.Series:
+    def _calculate_atr(self, data: pd.DataFrame, period: int = 14) -> pd.Series:
         """
         Calculate Average True Range.
 

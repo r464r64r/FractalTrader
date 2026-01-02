@@ -3,27 +3,24 @@
 NOTE: These tests require vectorbt which is only available in the Docker container.
 Run with: docker exec -it fractal-dev python -m pytest tests/test_backtesting.py -v
 """
-import pytest
-import pandas as pd
+
+
 import numpy as np
-from datetime import datetime
+import pandas as pd
+import pytest
 
 # Skip all tests if vectorbt is not available
 pytest.importorskip("vectorbt", reason="vectorbt only available in Docker container")
 
-from backtesting.runner import BacktestRunner, BacktestResult
+from backtesting.runner import BacktestResult, BacktestRunner
 from strategies.base import BaseStrategy, Signal
-from risk.position_sizing import RiskParameters
 
 
 # Mock strategy for testing
 class MockStrategy(BaseStrategy):
     """Simple mock strategy that generates predictable signals."""
 
-    DEFAULT_PARAMS = {
-        "entry_threshold": 100.5,
-        "min_rr_ratio": 2.0
-    }
+    DEFAULT_PARAMS = {"entry_threshold": 100.5, "min_rr_ratio": 2.0}
 
     def __init__(self, params: dict = None):
         super().__init__(name="MockStrategy", params=params)
@@ -42,7 +39,7 @@ class MockStrategy(BaseStrategy):
                     stop_loss=data["close"].iloc[idx] * 0.98,
                     take_profit=data["close"].iloc[idx] * 1.04,
                     confidence=80,
-                    strategy_name=self.name
+                    strategy_name=self.name,
                 )
                 signals.append(signal)
                 break  # Only one signal for simplicity
@@ -93,13 +90,16 @@ def sample_data():
     # Uptrend
     close = np.linspace(100, 120, 200)
 
-    return pd.DataFrame({
-        "open": close - 0.5,
-        "high": close + 1.0,
-        "low": close - 1.0,
-        "close": close,
-        "volume": np.random.randint(1000, 10000, 200)
-    }, index=dates)
+    return pd.DataFrame(
+        {
+            "open": close - 0.5,
+            "high": close + 1.0,
+            "low": close - 1.0,
+            "close": close,
+            "volume": np.random.randint(1000, 10000, 200),
+        },
+        index=dates,
+    )
 
 
 class TestBacktestRunner:
@@ -113,11 +113,7 @@ class TestBacktestRunner:
         assert runner.slippage == 0.0005
 
         # Custom initialization
-        runner_custom = BacktestRunner(
-            initial_cash=50000,
-            fees=0.002,
-            slippage=0.001
-        )
+        runner_custom = BacktestRunner(initial_cash=50000, fees=0.002, slippage=0.001)
         assert runner_custom.initial_cash == 50000
         assert runner_custom.fees == 0.002
         assert runner_custom.slippage == 0.001
@@ -177,7 +173,7 @@ class TestBacktestRunner:
                 entry_price=100.0,
                 stop_loss=98.0,
                 take_profit=104.0,
-                confidence=80
+                confidence=80,
             )
         ]
 
@@ -201,7 +197,7 @@ class TestBacktestRunner:
                 direction=1,
                 entry_price=100.0,
                 stop_loss=98.0,
-                confidence=80
+                confidence=80,
             )
         ]
 
@@ -218,13 +214,16 @@ class TestBacktestRunner:
         # The empty result path exercises NaN handling
         runner = BacktestRunner()
         dates = pd.date_range("2024-01-01", periods=10, freq="1h")
-        data = pd.DataFrame({
-            "open": [100] * 10,
-            "high": [101] * 10,
-            "low": [99] * 10,
-            "close": [100] * 10,
-            "volume": [1000] * 10
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100] * 10,
+                "high": [101] * 10,
+                "low": [99] * 10,
+                "close": [100] * 10,
+                "volume": [1000] * 10,
+            },
+            index=dates,
+        )
 
         strategy = MockNoSignalsStrategy()
         result = runner.run(data, strategy)
@@ -258,13 +257,16 @@ class TestBacktestRunner:
         # Tested through the empty result
         runner = BacktestRunner()
         dates = pd.date_range("2024-01-01", periods=10, freq="1h")
-        data = pd.DataFrame({
-            "open": [100] * 10,
-            "high": [101] * 10,
-            "low": [99] * 10,
-            "close": [100] * 10,
-            "volume": [1000] * 10
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "open": [100] * 10,
+                "high": [101] * 10,
+                "low": [99] * 10,
+                "close": [100] * 10,
+                "volume": [1000] * 10,
+            },
+            index=dates,
+        )
 
         strategy = MockNoSignalsStrategy()
         result = runner.run(data, strategy)
@@ -282,37 +284,22 @@ class TestBacktestRunner:
     def test_optimize_returns_sorted_dataframe(self, sample_data):
         """Optimize should return DataFrame sorted by metric."""
         runner = BacktestRunner()
-        param_grid = {
-            "entry_threshold": [100.0, 105.0],
-            "min_rr_ratio": [1.5, 2.0]
-        }
+        param_grid = {"entry_threshold": [100.0, 105.0], "min_rr_ratio": [1.5, 2.0]}
 
-        results = runner.optimize(
-            sample_data,
-            MockStrategy,
-            param_grid,
-            metric="total_return"
-        )
+        results = runner.optimize(sample_data, MockStrategy, param_grid, metric="total_return")
 
         assert isinstance(results, pd.DataFrame)
         if len(results) > 1:
             # Check sorted in descending order
             returns = results["total_return"].values
-            assert all(returns[i] >= returns[i+1] for i in range(len(returns)-1))
+            assert all(returns[i] >= returns[i + 1] for i in range(len(returns) - 1))
 
     def test_optimize_tests_all_param_combinations(self, sample_data):
         """Optimize should test all parameter combinations."""
         runner = BacktestRunner()
-        param_grid = {
-            "entry_threshold": [100.0, 105.0, 110.0],
-            "min_rr_ratio": [1.5, 2.0]
-        }
+        param_grid = {"entry_threshold": [100.0, 105.0, 110.0], "min_rr_ratio": [1.5, 2.0]}
 
-        results = runner.optimize(
-            sample_data,
-            MockStrategy,
-            param_grid
-        )
+        results = runner.optimize(sample_data, MockStrategy, param_grid)
 
         # Should test 3 × 2 = 6 combinations (if all succeed)
         # At least should have tested multiple combinations
@@ -327,11 +314,7 @@ class TestBacktestRunner:
             "entry_threshold": [100.0, 200.0],  # 200 is too high, no signals
         }
 
-        results = runner.optimize(
-            sample_data,
-            MockStrategy,
-            param_grid
-        )
+        results = runner.optimize(sample_data, MockStrategy, param_grid)
 
         # Should not crash, even if some combinations fail
         assert isinstance(results, pd.DataFrame)
@@ -343,11 +326,7 @@ class TestBacktestRunner:
         # Use failing strategy
         param_grid = {}
 
-        results = runner.optimize(
-            sample_data,
-            MockFailingStrategy,
-            param_grid
-        )
+        results = runner.optimize(sample_data, MockFailingStrategy, param_grid)
 
         assert isinstance(results, pd.DataFrame)
         assert len(results) == 0

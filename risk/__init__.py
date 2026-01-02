@@ -1,7 +1,7 @@
 """Risk management engine."""
 
-from .position_sizing import calculate_position_size, RiskParameters
 from .confidence import ConfidenceFactors
+from .position_sizing import RiskParameters, calculate_position_size
 
 __all__ = [
     "calculate_position_size",

@@ -1,17 +1,14 @@
 """Live data streaming for real-time market analysis."""
 
-import pandas as pd
-import numpy as np
-from typing import Optional, Callable, Dict, List
-import time
 import logging
-from datetime import datetime, timezone
-from threading import Thread, Event
-from queue import Queue, Empty
+from collections.abc import Callable
+from datetime import UTC, datetime
+from threading import Event, Thread
 
-from data.hyperliquid_fetcher import HyperliquidFetcher
+import pandas as pd
+
 from data.ccxt_fetcher import CCXTFetcher
-
+from data.hyperliquid_fetcher import HyperliquidFetcher
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +39,10 @@ class LiveDataStream:
     def __init__(
         self,
         symbol: str,
-        timeframes: List[str] = ['15m', '1h', '4h'],
+        timeframes: list[str] = ["15m", "1h", "4h"],
         update_interval: int = 15,
-        source: str = 'hyperliquid',
-        lookback: int = 500
+        source: str = "hyperliquid",
+        lookback: int = 500,
     ):
         """
         Initialize live data stream.
@@ -64,33 +61,33 @@ class LiveDataStream:
         self.source = source
 
         # Initialize data fetcher
-        if source == 'hyperliquid':
-            self.fetcher = HyperliquidFetcher(network='mainnet')
-        elif source == 'binance':
-            self.fetcher = CCXTFetcher(exchange_id='binance')
+        if source == "hyperliquid":
+            self.fetcher = HyperliquidFetcher(network="mainnet")
+        elif source == "binance":
+            self.fetcher = CCXTFetcher(exchange_id="binance")
         else:
             raise ValueError(f"Unknown source: {source}")
 
         # Data storage
-        self.data: Dict[str, pd.DataFrame] = {}
-        self.last_update: Dict[str, datetime] = {}
+        self.data: dict[str, pd.DataFrame] = {}
+        self.last_update: dict[str, datetime] = {}
 
         # Threading
-        self._thread: Optional[Thread] = None
+        self._thread: Thread | None = None
         self._stop_event = Event()
-        self._callbacks: List[Callable] = []
+        self._callbacks: list[Callable] = []
 
         # Metrics
         self.update_count = 0
         self.error_count = 0
-        self.start_time: Optional[datetime] = None
+        self.start_time: datetime | None = None
 
         logger.info(
             f"LiveDataStream initialized: {symbol} on {source}, "
             f"timeframes={timeframes}, interval={update_interval}s"
         )
 
-    def on_update(self, callback: Callable[[Dict[str, pd.DataFrame]], None]):
+    def on_update(self, callback: Callable[[dict[str, pd.DataFrame]], None]):
         """
         Register callback for data updates.
 
@@ -116,7 +113,7 @@ class LiveDataStream:
         self._thread = Thread(target=self._update_loop, daemon=True)
         self._thread.start()
 
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         logger.info("Live stream started")
 
     def stop(self):
@@ -129,12 +126,9 @@ class LiveDataStream:
         self._stop_event.set()
         self._thread.join(timeout=5)
 
-        logger.info(
-            f"Stream stopped. Updates: {self.update_count}, "
-            f"Errors: {self.error_count}"
-        )
+        logger.info(f"Stream stopped. Updates: {self.update_count}, " f"Errors: {self.error_count}")
 
-    def get_data(self, timeframe: Optional[str] = None) -> Dict[str, pd.DataFrame]:
+    def get_data(self, timeframe: str | None = None) -> dict[str, pd.DataFrame]:
         """
         Get current data.
 
@@ -148,7 +142,7 @@ class LiveDataStream:
             return self.data.get(timeframe)
         return self.data.copy()
 
-    def get_latest_price(self) -> Optional[float]:
+    def get_latest_price(self) -> float | None:
         """Get most recent close price from fastest timeframe."""
         if not self.data:
             return None
@@ -160,13 +154,13 @@ class LiveDataStream:
         if df is None or df.empty:
             return None
 
-        return float(df['close'].iloc[-1])
+        return float(df["close"].iloc[-1])
 
-    def get_uptime(self) -> Optional[float]:
+    def get_uptime(self) -> float | None:
         """Get stream uptime in seconds."""
         if not self.start_time:
             return None
-        return (datetime.now(timezone.utc) - self.start_time).total_seconds()
+        return (datetime.now(UTC) - self.start_time).total_seconds()
 
     def _update_loop(self):
         """Background thread: periodically fetch new data."""
@@ -191,14 +185,10 @@ class LiveDataStream:
         """Fetch data for all timeframes."""
         for tf in self.timeframes:
             try:
-                df = self.fetcher.fetch_ohlcv(
-                    symbol=self.symbol,
-                    timeframe=tf,
-                    limit=self.lookback
-                )
+                df = self.fetcher.fetch_ohlcv(symbol=self.symbol, timeframe=tf, limit=self.lookback)
 
                 self.data[tf] = df
-                self.last_update[tf] = datetime.now(timezone.utc)
+                self.last_update[tf] = datetime.now(UTC)
 
                 logger.debug(f"Updated {tf}: {len(df)} candles")
 
@@ -228,9 +218,9 @@ class LiveIndicatorStream(LiveDataStream):
 
         # Import detection modules (lazy import to avoid circular dependencies)
         try:
-            from detection.order_blocks import detect_order_blocks
             from detection.liquidity import detect_liquidity_zones
             from detection.market_structure import detect_market_structure
+            from detection.order_blocks import detect_order_blocks
 
             self.detect_order_blocks = detect_order_blocks
             self.detect_liquidity_zones = detect_liquidity_zones
@@ -242,9 +232,9 @@ class LiveIndicatorStream(LiveDataStream):
             self.detect_market_structure = None
 
         # Indicator storage
-        self.order_blocks: Dict[str, pd.DataFrame] = {}
-        self.liquidity_zones: Dict[str, pd.DataFrame] = {}
-        self.market_structure: Dict[str, dict] = {}
+        self.order_blocks: dict[str, pd.DataFrame] = {}
+        self.liquidity_zones: dict[str, pd.DataFrame] = {}
+        self.market_structure: dict[str, dict] = {}
 
     def _fetch_all_timeframes(self):
         """Fetch data and compute indicators."""
@@ -293,7 +283,7 @@ class LiveIndicatorStream(LiveDataStream):
             Dict with 'order_blocks', 'liquidity_zones', 'market_structure'
         """
         return {
-            'order_blocks': self.order_blocks.get(timeframe),
-            'liquidity_zones': self.liquidity_zones.get(timeframe),
-            'market_structure': self.market_structure.get(timeframe, {})
+            "order_blocks": self.order_blocks.get(timeframe),
+            "liquidity_zones": self.liquidity_zones.get(timeframe),
+            "market_structure": self.market_structure.get(timeframe, {}),
         }

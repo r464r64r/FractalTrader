@@ -11,7 +11,7 @@ from .testnet import HyperliquidTestnetTrader
 from .trader import HyperliquidTrader
 
 __all__ = [
-    'HyperliquidConfig',
-    'HyperliquidTestnetTrader',
-    'HyperliquidTrader',
+    "HyperliquidConfig",
+    "HyperliquidTestnetTrader",
+    "HyperliquidTrader",
 ]

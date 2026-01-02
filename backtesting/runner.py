@@ -5,15 +5,14 @@ This module provides fast vectorized backtesting for trading strategies,
 with comprehensive performance metrics and result analysis.
 """
 
-import vectorbt as vbt
-import pandas as pd
-import numpy as np
 from dataclasses import dataclass
-from typing import Optional
 from itertools import product
 
-from strategies.base import BaseStrategy, Signal
+import pandas as pd
+import vectorbt as vbt
+
 from risk.position_sizing import RiskParameters
+from strategies.base import BaseStrategy, Signal
 
 
 @dataclass
@@ -74,8 +73,8 @@ class BacktestRunner:
     def __init__(
         self,
         initial_cash: float = 10000,
-        fees: float = 0.001,      # 0.1% per trade
-        slippage: float = 0.0005  # 0.05% slippage
+        fees: float = 0.001,  # 0.1% per trade
+        slippage: float = 0.0005,  # 0.05% slippage
     ):
         """
         Initialize the backtest runner.
@@ -93,7 +92,7 @@ class BacktestRunner:
         self,
         data: pd.DataFrame,
         strategy: BaseStrategy,
-        risk_params: Optional[RiskParameters] = None
+        risk_params: RiskParameters | None = None,
     ) -> BacktestResult:
         """
         Run backtest for a strategy.
@@ -130,7 +129,7 @@ class BacktestRunner:
             init_cash=self.initial_cash,
             fees=self.fees,
             slippage=self.slippage,
-            freq="1h"  # Adjust based on data timeframe
+            freq="1h",  # Adjust based on data timeframe
         )
 
         return self._extract_results(portfolio, signals, data.index)
@@ -140,7 +139,7 @@ class BacktestRunner:
         data: pd.DataFrame,
         strategy_class: type,
         param_grid: dict,
-        metric: str = "sharpe_ratio"
+        metric: str = "sharpe_ratio",
     ) -> pd.DataFrame:
         """
         Optimize strategy parameters.
@@ -177,16 +176,18 @@ class BacktestRunner:
                 strategy = strategy_class(params)
                 result = self.run(data, strategy)
 
-                results.append({
-                    **params,
-                    "total_return": result.total_return,
-                    "sharpe_ratio": result.sharpe_ratio,
-                    "sortino_ratio": result.sortino_ratio,
-                    "max_drawdown": result.max_drawdown,
-                    "win_rate": result.win_rate,
-                    "profit_factor": result.profit_factor,
-                    "total_trades": result.total_trades
-                })
+                results.append(
+                    {
+                        **params,
+                        "total_return": result.total_return,
+                        "sharpe_ratio": result.sharpe_ratio,
+                        "sortino_ratio": result.sortino_ratio,
+                        "max_drawdown": result.max_drawdown,
+                        "win_rate": result.win_rate,
+                        "profit_factor": result.profit_factor,
+                        "total_trades": result.total_trades,
+                    }
+                )
             except Exception:
                 # Skip parameter combinations that fail
                 continue
@@ -198,9 +199,7 @@ class BacktestRunner:
         return df.sort_values(metric, ascending=False)
 
     def _signals_to_arrays(
-        self,
-        data: pd.DataFrame,
-        signals: list[Signal]
+        self, data: pd.DataFrame, signals: list[Signal]
     ) -> tuple[pd.Series, pd.Series]:
         """
         Convert Signal objects to vectorbt entry/exit arrays.
@@ -230,10 +229,7 @@ class BacktestRunner:
         return entries, exits
 
     def _extract_results(
-        self,
-        portfolio: vbt.Portfolio,
-        signals: list[Signal],
-        index: pd.Index
+        self, portfolio: vbt.Portfolio, signals: list[Signal], index: pd.Index
     ) -> BacktestResult:
         """
         Extract performance metrics from vectorbt portfolio.
@@ -306,7 +302,7 @@ class BacktestRunner:
             avg_trade_duration=avg_duration,
             equity_curve=equity_curve,
             trades=trades_df,
-            signals=signals
+            signals=signals,
         )
 
     def _empty_result(self, index: pd.Index) -> BacktestResult:
@@ -332,7 +328,7 @@ class BacktestRunner:
             avg_trade_duration=pd.Timedelta(0),
             equity_curve=equity_curve,
             trades=pd.DataFrame(),
-            signals=[]
+            signals=[],
         )
 
 

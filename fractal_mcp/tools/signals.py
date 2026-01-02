@@ -8,16 +8,15 @@ import subprocess
 from typing import Any
 
 from fractal_mcp.config import (
-    DEFAULT_BACKTEST_BARS,
     AVAILABLE_STRATEGIES,
+    DEFAULT_BACKTEST_BARS,
+    DOCKER_CONTAINER_NAME,
     USE_DOCKER,
-    DOCKER_CONTAINER_NAME
 )
 
 
 def generate_signals(
-    strategy: str = "liquidity_sweep",
-    bars: int = DEFAULT_BACKTEST_BARS
+    strategy: str = "liquidity_sweep", bars: int = DEFAULT_BACKTEST_BARS
 ) -> dict[str, Any]:
     """
     Generate trading signals for a given strategy.
@@ -40,14 +39,14 @@ def generate_signals(
     if strategy not in AVAILABLE_STRATEGIES:
         return {
             "signals": [],
-            "error": f"Invalid strategy. Choose from: {', '.join(AVAILABLE_STRATEGIES)}"
+            "error": f"Invalid strategy. Choose from: {', '.join(AVAILABLE_STRATEGIES)}",
         }
 
     # Map strategy name to class name
     strategy_map = {
         "liquidity_sweep": "LiquiditySweepStrategy",
         "fvg_fill": "FVGFillStrategy",
-        "bos_orderblock": "BOSOrderBlockStrategy"
+        "bos_orderblock": "BOSOrderBlockStrategy",
     }
 
     strategy_class = strategy_map[strategy]
@@ -113,19 +112,11 @@ except Exception as e:
 
     try:
         if USE_DOCKER:
-            cmd = [
-                "docker", "exec", DOCKER_CONTAINER_NAME,
-                "python", "-c", signal_code
-            ]
+            cmd = ["docker", "exec", DOCKER_CONTAINER_NAME, "python", "-c", signal_code]
         else:
             cmd = ["python", "-c", signal_code]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
         output = result.stdout + result.stderr
 
@@ -133,23 +124,15 @@ except Exception as e:
         if "__MCP_RESULT__" in output:
             json_str = output.split("__MCP_RESULT__")[1].strip()
             import json
+
             return json.loads(json_str)
         else:
-            return {
-                "signals": [],
-                "error": f"Failed to parse signal output:\n{output}"
-            }
+            return {"signals": [], "error": f"Failed to parse signal output:\n{output}"}
 
     except subprocess.TimeoutExpired:
-        return {
-            "signals": [],
-            "error": "Signal generation timed out after 120 seconds"
-        }
+        return {"signals": [], "error": "Signal generation timed out after 120 seconds"}
     except Exception as e:
-        return {
-            "signals": [],
-            "error": f"Error generating signals: {str(e)}"
-        }
+        return {"signals": [], "error": f"Error generating signals: {str(e)}"}
 
 
 # =============================================================================

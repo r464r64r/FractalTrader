@@ -6,9 +6,9 @@ or distributed positions before making significant moves. These zones often
 act as strong support/resistance on retest.
 """
 
-import pandas as pd
-import numpy as np
 from typing import Literal
+
+import pandas as pd
 
 
 def find_order_blocks(
@@ -16,7 +16,7 @@ def find_order_blocks(
     high: pd.Series,
     low: pd.Series,
     close: pd.Series,
-    min_impulse_percent: float = 0.01  # Minimum 1% impulse move
+    min_impulse_percent: float = 0.01,  # Minimum 1% impulse move
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Identify Order Blocks.
@@ -43,9 +43,7 @@ def find_order_blocks(
         >>> valid_obs = bullish_ob[~bullish_ob['invalidated']]
     """
     if len(close) < 3:
-        empty_df = pd.DataFrame(
-            columns=["ob_high", "ob_low", "invalidated", "retest_count"]
-        )
+        empty_df = pd.DataFrame(columns=["ob_high", "ob_low", "invalidated", "retest_count"])
         return empty_df, empty_df
 
     bullish_obs = []
@@ -68,40 +66,40 @@ def find_order_blocks(
             # Look for the last down candle before this impulse
             # The down candle is the order block
             if close_vals[i] < open_vals[i]:  # Current candle is down
-                bullish_obs.append({
-                    "timestamp": index[i],
-                    "ob_high": high_vals[i],
-                    "ob_low": low_vals[i],
-                    "invalidated": False,
-                    "retest_count": 0
-                })
+                bullish_obs.append(
+                    {
+                        "timestamp": index[i],
+                        "ob_high": high_vals[i],
+                        "ob_low": low_vals[i],
+                        "invalidated": False,
+                        "retest_count": 0,
+                    }
+                )
 
         # Bearish impulse: next candle closes significantly lower
         if current_close < prev_close * (1 - min_impulse_percent):
             # Look for the last up candle before this impulse
             if close_vals[i] > open_vals[i]:  # Current candle is up
-                bearish_obs.append({
-                    "timestamp": index[i],
-                    "ob_high": high_vals[i],
-                    "ob_low": low_vals[i],
-                    "invalidated": False,
-                    "retest_count": 0
-                })
+                bearish_obs.append(
+                    {
+                        "timestamp": index[i],
+                        "ob_high": high_vals[i],
+                        "ob_low": low_vals[i],
+                        "invalidated": False,
+                        "retest_count": 0,
+                    }
+                )
 
     # Convert to DataFrames
     if bullish_obs:
         bullish_df = pd.DataFrame(bullish_obs).set_index("timestamp")
     else:
-        bullish_df = pd.DataFrame(
-            columns=["ob_high", "ob_low", "invalidated", "retest_count"]
-        )
+        bullish_df = pd.DataFrame(columns=["ob_high", "ob_low", "invalidated", "retest_count"])
 
     if bearish_obs:
         bearish_df = pd.DataFrame(bearish_obs).set_index("timestamp")
     else:
-        bearish_df = pd.DataFrame(
-            columns=["ob_high", "ob_low", "invalidated", "retest_count"]
-        )
+        bearish_df = pd.DataFrame(columns=["ob_high", "ob_low", "invalidated", "retest_count"])
 
     return bullish_df, bearish_df
 
@@ -110,7 +108,7 @@ def check_ob_retest(
     high: pd.Series,
     low: pd.Series,
     order_blocks: pd.DataFrame,
-    direction: Literal["bullish", "bearish"] = "bullish"
+    direction: Literal["bullish", "bearish"] = "bullish",
 ) -> pd.Series:
     """
     Check if price is retesting a valid order block.
@@ -173,9 +171,7 @@ def check_ob_retest(
 
 
 def get_valid_order_blocks(
-    order_blocks: pd.DataFrame,
-    current_idx: pd.Timestamp,
-    max_age_bars: int = 50
+    order_blocks: pd.DataFrame, current_idx: pd.Timestamp, max_age_bars: int = 50
 ) -> pd.DataFrame:
     """
     Get valid (non-invalidated) order blocks within age limit.
@@ -211,7 +207,7 @@ def get_nearest_order_block(
     price: float,
     order_blocks: pd.DataFrame,
     current_idx: pd.Timestamp,
-    direction: Literal["above", "below"] = "below"
+    direction: Literal["above", "below"] = "below",
 ) -> dict | None:
     """
     Find the nearest valid order block to current price.
@@ -242,21 +238,25 @@ def get_nearest_order_block(
         ob_mid = (ob["ob_high"] + ob["ob_low"]) / 2
 
         if direction == "below" and ob_mid < price:
-            candidates.append({
-                "timestamp": ob_idx,
-                "ob_high": ob["ob_high"],
-                "ob_low": ob["ob_low"],
-                "distance": price - ob_mid,
-                "retest_count": ob["retest_count"]
-            })
+            candidates.append(
+                {
+                    "timestamp": ob_idx,
+                    "ob_high": ob["ob_high"],
+                    "ob_low": ob["ob_low"],
+                    "distance": price - ob_mid,
+                    "retest_count": ob["retest_count"],
+                }
+            )
         elif direction == "above" and ob_mid > price:
-            candidates.append({
-                "timestamp": ob_idx,
-                "ob_high": ob["ob_high"],
-                "ob_low": ob["ob_low"],
-                "distance": ob_mid - price,
-                "retest_count": ob["retest_count"]
-            })
+            candidates.append(
+                {
+                    "timestamp": ob_idx,
+                    "ob_high": ob["ob_high"],
+                    "ob_low": ob["ob_low"],
+                    "distance": ob_mid - price,
+                    "retest_count": ob["retest_count"],
+                }
+            )
 
     if not candidates:
         return None
@@ -265,10 +265,7 @@ def get_nearest_order_block(
     return min(candidates, key=lambda x: x["distance"])
 
 
-def calculate_ob_strength(
-    order_blocks: pd.DataFrame,
-    volume: pd.Series | None = None
-) -> pd.Series:
+def calculate_ob_strength(order_blocks: pd.DataFrame, volume: pd.Series | None = None) -> pd.Series:
     """
     Calculate strength score for each order block.
 

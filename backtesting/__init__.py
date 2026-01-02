@@ -1,6 +1,6 @@
 """Backtesting framework using vectorbt."""
 
-from .runner import BacktestRunner, BacktestResult
+from .runner import BacktestResult, BacktestRunner
 
 __all__ = [
     "BacktestRunner",
