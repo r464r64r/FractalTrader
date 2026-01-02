@@ -1,14 +1,14 @@
 """Tests for data fetchers."""
 
-import pytest
-import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
-import ccxt
+from unittest.mock import patch
 
-from data.hyperliquid_fetcher import HyperliquidFetcher
+import ccxt
+import pandas as pd
+import pytest
+
 from data.ccxt_fetcher import CCXTFetcher
 from data.fetcher import BaseFetcher
+from data.hyperliquid_fetcher import HyperliquidFetcher
 
 
 class TestBaseFetcher:
@@ -21,53 +21,53 @@ class TestBaseFetcher:
 
     def test_validate_dataframe_with_correct_format(self):
         """Test validation passes with correct format."""
-        df = pd.DataFrame({
-            'open': [100.0, 101.0],
-            'high': [102.0, 103.0],
-            'low': [99.0, 100.0],
-            'close': [101.0, 102.0],
-            'volume': [1000.0, 2000.0]
-        })
-        df.index = pd.DatetimeIndex(['2024-01-01', '2024-01-02'])
+        df = pd.DataFrame(
+            {
+                "open": [100.0, 101.0],
+                "high": [102.0, 103.0],
+                "low": [99.0, 100.0],
+                "close": [101.0, 102.0],
+                "volume": [1000.0, 2000.0],
+            }
+        )
+        df.index = pd.DatetimeIndex(["2024-01-01", "2024-01-02"])
 
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
         assert fetcher.validate_dataframe(df) is True
 
     def test_validate_dataframe_missing_columns(self):
         """Test validation fails with missing columns."""
-        df = pd.DataFrame({
-            'open': [100.0],
-            'high': [102.0],
-            'low': [99.0],
-            # missing 'close' and 'volume'
-        })
-        df.index = pd.DatetimeIndex(['2024-01-01'])
+        df = pd.DataFrame(
+            {
+                "open": [100.0],
+                "high": [102.0],
+                "low": [99.0],
+                # missing 'close' and 'volume'
+            }
+        )
+        df.index = pd.DatetimeIndex(["2024-01-01"])
 
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
         with pytest.raises(ValueError, match="Missing required columns"):
             fetcher.validate_dataframe(df)
 
     def test_validate_dataframe_invalid_index(self):
         """Test validation fails without DatetimeIndex."""
-        df = pd.DataFrame({
-            'open': [100.0],
-            'high': [102.0],
-            'low': [99.0],
-            'close': [101.0],
-            'volume': [1000.0]
-        })
+        df = pd.DataFrame(
+            {"open": [100.0], "high": [102.0], "low": [99.0], "close": [101.0], "volume": [1000.0]}
+        )
         # No DatetimeIndex
 
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
         with pytest.raises(ValueError, match="Index must be DatetimeIndex"):
             fetcher.validate_dataframe(df)
 
     def test_validate_dataframe_empty(self):
         """Test validation fails with empty DataFrame."""
-        df = pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume'])
+        df = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
         df.index = pd.DatetimeIndex([])
 
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
         with pytest.raises(ValueError, match="DataFrame is empty"):
             fetcher.validate_dataframe(df)
 
@@ -78,85 +78,85 @@ class TestHyperliquidFetcher:
     @pytest.fixture
     def fetcher(self):
         """Create fetcher instance (testnet)."""
-        return HyperliquidFetcher(network='testnet')
+        return HyperliquidFetcher(network="testnet")
 
     def test_initialization(self, fetcher):
         """Test fetcher initializes correctly."""
-        assert fetcher.network == 'testnet'
+        assert fetcher.network == "testnet"
         assert fetcher.info is not None
         assert fetcher.timeout == 30
 
     def test_initialization_mainnet(self):
         """Test mainnet initialization."""
-        fetcher = HyperliquidFetcher(network='mainnet')
-        assert fetcher.network == 'mainnet'
+        fetcher = HyperliquidFetcher(network="mainnet")
+        assert fetcher.network == "mainnet"
 
     def test_fetch_ohlcv_basic(self, fetcher):
         """Test basic OHLCV fetch."""
-        df = fetcher.fetch_ohlcv('BTC', '1h', limit=100)
+        df = fetcher.fetch_ohlcv("BTC", "1h", limit=100)
 
         # Check DataFrame structure
         assert isinstance(df, pd.DataFrame)
         assert len(df) <= 100
-        assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
+        assert list(df.columns) == ["open", "high", "low", "close", "volume"]
 
         # Check index
         assert isinstance(df.index, pd.DatetimeIndex)
         assert df.index.is_monotonic_increasing
 
         # Check data types
-        assert df['open'].dtype == float
-        assert df['close'].dtype == float
+        assert df["open"].dtype == float
+        assert df["close"].dtype == float
 
     def test_fetch_ohlcv_respects_limit(self, fetcher):
         """Test that limit parameter works."""
-        df = fetcher.fetch_ohlcv('BTC', '1h', limit=50)
+        df = fetcher.fetch_ohlcv("BTC", "1h", limit=50)
         assert len(df) <= 50
 
     def test_fetch_ohlcv_different_timeframes(self, fetcher):
         """Test fetching different timeframes."""
-        for tf in ['1m', '5m', '15m', '1h', '4h', '1d']:
-            df = fetcher.fetch_ohlcv('BTC', tf, limit=10)
+        for tf in ["1m", "5m", "15m", "1h", "4h", "1d"]:
+            df = fetcher.fetch_ohlcv("BTC", tf, limit=10)
             assert len(df) > 0
             assert isinstance(df, pd.DataFrame)
 
     def test_invalid_timeframe_raises_error(self, fetcher):
         """Test invalid timeframe raises ValueError."""
         with pytest.raises(ValueError, match="Invalid timeframe"):
-            fetcher.fetch_ohlcv('BTC', '3h')
+            fetcher.fetch_ohlcv("BTC", "3h")
 
     def test_limit_exceeds_max_capped(self, fetcher):
         """Test limit exceeding max is capped at 5000."""
-        df = fetcher.fetch_ohlcv('BTC', '1h', limit=10000)
+        df = fetcher.fetch_ohlcv("BTC", "1h", limit=10000)
         assert len(df) <= 5000
 
     def test_empty_dataframe_has_correct_format(self, fetcher):
         """Test empty DataFrame maintains correct structure."""
         df = fetcher._empty_dataframe()
         assert isinstance(df, pd.DataFrame)
-        assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
+        assert list(df.columns) == ["open", "high", "low", "close", "volume"]
         assert isinstance(df.index, pd.DatetimeIndex)
 
     def test_parse_since_iso_format(self, fetcher):
         """Test parsing ISO date string."""
-        ts = fetcher._parse_since('2024-01-01')
-        expected = int(pd.to_datetime('2024-01-01').timestamp() * 1000)
+        ts = fetcher._parse_since("2024-01-01")
+        expected = int(pd.to_datetime("2024-01-01").timestamp() * 1000)
         assert ts == expected
 
     def test_parse_since_unix_timestamp_seconds(self, fetcher):
         """Test parsing Unix timestamp in seconds."""
-        ts = fetcher._parse_since('1704067200')  # 2024-01-01 in seconds
+        ts = fetcher._parse_since("1704067200")  # 2024-01-01 in seconds
         assert ts == 1704067200000  # Should convert to ms
 
     def test_parse_since_invalid_format(self, fetcher):
         """Test parsing invalid format raises error."""
         with pytest.raises(ValueError, match="Invalid 'since' format"):
-            fetcher._parse_since('invalid_date')
+            fetcher._parse_since("invalid_date")
 
     def test_calculate_start_time(self, fetcher):
         """Test start time calculation."""
-        end_time = int(pd.to_datetime('2025-12-20').timestamp() * 1000)
-        start = fetcher._calculate_start_time(end_time, '1h', 100)
+        end_time = int(pd.to_datetime("2025-12-20").timestamp() * 1000)
+        start = fetcher._calculate_start_time(end_time, "1h", 100)
 
         # 100 hours = 100 * 60 * 60 * 1000 ms
         expected = end_time - (100 * 60 * 60 * 1000)
@@ -171,7 +171,7 @@ class TestHyperliquidFetcher:
 
     def test_get_current_price(self, fetcher):
         """Test fetching current price."""
-        price = fetcher.get_current_price('BTC')
+        price = fetcher.get_current_price("BTC")
         assert isinstance(price, float)
         # Price should be positive (or 0 if API fails)
         assert price >= 0
@@ -183,55 +183,55 @@ class TestCCXTFetcher:
     @pytest.fixture
     def fetcher(self):
         """Create fetcher instance (Binance)."""
-        return CCXTFetcher('binance')
+        return CCXTFetcher("binance")
 
     def test_initialization(self, fetcher):
         """Test fetcher initializes correctly."""
-        assert fetcher.exchange_id == 'binance'
+        assert fetcher.exchange_id == "binance"
         assert fetcher.exchange is not None
 
     def test_initialization_different_exchange(self):
         """Test initialization with different exchange."""
-        fetcher = CCXTFetcher('bybit')
-        assert fetcher.exchange_id == 'bybit'
+        fetcher = CCXTFetcher("bybit")
+        assert fetcher.exchange_id == "bybit"
 
     def test_invalid_exchange_raises_error(self):
         """Test invalid exchange name raises error."""
         with pytest.raises(ValueError, match="not supported"):
-            CCXTFetcher('invalid_exchange_name')
+            CCXTFetcher("invalid_exchange_name")
 
     def test_fetch_ohlcv_basic(self, fetcher):
         """Test basic OHLCV fetch."""
-        df = fetcher.fetch_ohlcv('BTC/USDT', '1h', limit=100)
+        df = fetcher.fetch_ohlcv("BTC/USDT", "1h", limit=100)
 
         assert isinstance(df, pd.DataFrame)
         assert len(df) <= 100
-        assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
+        assert list(df.columns) == ["open", "high", "low", "close", "volume"]
         assert isinstance(df.index, pd.DatetimeIndex)
 
     def test_fetch_ohlcv_with_since(self, fetcher):
         """Test fetching from specific date."""
-        df = fetcher.fetch_ohlcv('BTC/USDT', '1d', since='2025-12-01', limit=30)
+        df = fetcher.fetch_ohlcv("BTC/USDT", "1d", since="2025-12-01", limit=30)
 
         assert len(df) <= 30
-        assert df.index[0] >= pd.to_datetime('2025-12-01', utc=True)
+        assert df.index[0] >= pd.to_datetime("2025-12-01", utc=True)
 
     def test_different_exchanges(self):
         """Test multiple exchanges work."""
-        for exchange in ['binance', 'bybit']:
+        for exchange in ["binance", "bybit"]:
             fetcher = CCXTFetcher(exchange)
-            df = fetcher.fetch_ohlcv('BTC/USDT', '1h', limit=10)
+            df = fetcher.fetch_ohlcv("BTC/USDT", "1h", limit=10)
             assert len(df) > 0
 
     def test_get_available_symbols(self, fetcher):
         """Test fetching available symbols."""
         symbols = fetcher.get_available_symbols()
         assert isinstance(symbols, list)
-        assert 'BTC/USDT' in symbols
+        assert "BTC/USDT" in symbols
 
     def test_get_current_price(self, fetcher):
         """Test fetching current price."""
-        price = fetcher.get_current_price('BTC/USDT')
+        price = fetcher.get_current_price("BTC/USDT")
         assert isinstance(price, float)
         assert price > 0  # BTC price should be positive
 
@@ -239,18 +239,18 @@ class TestCCXTFetcher:
         """Test empty DataFrame maintains correct structure."""
         df = fetcher._empty_dataframe()
         assert isinstance(df, pd.DataFrame)
-        assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
+        assert list(df.columns) == ["open", "high", "low", "close", "volume"]
         assert isinstance(df.index, pd.DatetimeIndex)
 
     def test_parse_since_iso_format(self, fetcher):
         """Test parsing ISO date string."""
-        ts = fetcher._parse_since('2024-01-01')
-        expected = int(pd.to_datetime('2024-01-01').timestamp() * 1000)
+        ts = fetcher._parse_since("2024-01-01")
+        expected = int(pd.to_datetime("2024-01-01").timestamp() * 1000)
         assert ts == expected
 
     def test_parse_since_unix_timestamp(self, fetcher):
         """Test parsing Unix timestamp."""
-        ts = fetcher._parse_since('1704067200')
+        ts = fetcher._parse_since("1704067200")
         assert ts == 1704067200000
 
 
@@ -259,12 +259,12 @@ class TestFetcherCompatibility:
 
     def test_both_fetchers_same_format(self):
         """Test Hyperliquid and CCXT return same format."""
-        hl_fetcher = HyperliquidFetcher(network='testnet')
-        ccxt_fetcher = CCXTFetcher('binance')
+        hl_fetcher = HyperliquidFetcher(network="testnet")
+        ccxt_fetcher = CCXTFetcher("binance")
 
         # Fetch same timeframe
-        df_hl = hl_fetcher.fetch_ohlcv('BTC', '1h', limit=10)
-        df_ccxt = ccxt_fetcher.fetch_ohlcv('BTC/USDT', '1h', limit=10)
+        df_hl = hl_fetcher.fetch_ohlcv("BTC", "1h", limit=10)
+        df_ccxt = ccxt_fetcher.fetch_ohlcv("BTC/USDT", "1h", limit=10)
 
         # Check same columns
         assert list(df_hl.columns) == list(df_ccxt.columns)
@@ -282,14 +282,14 @@ class TestFetcherCompatibility:
         strategy = LiquiditySweepStrategy()
 
         # Test with Hyperliquid data
-        hl_fetcher = HyperliquidFetcher(network='testnet')
-        df_hl = hl_fetcher.fetch_ohlcv('BTC', '1h', limit=100)
+        hl_fetcher = HyperliquidFetcher(network="testnet")
+        df_hl = hl_fetcher.fetch_ohlcv("BTC", "1h", limit=100)
         signals_hl = strategy.generate_signals(df_hl)
         # Should not raise error
 
         # Test with CCXT data
-        ccxt_fetcher = CCXTFetcher('binance')
-        df_ccxt = ccxt_fetcher.fetch_ohlcv('BTC/USDT', '1h', limit=100)
+        ccxt_fetcher = CCXTFetcher("binance")
+        df_ccxt = ccxt_fetcher.fetch_ohlcv("BTC/USDT", "1h", limit=100)
         signals_ccxt = strategy.generate_signals(df_ccxt)
         # Should not raise error
 
@@ -302,27 +302,23 @@ class TestRetryLogic:
 
     def test_hyperliquid_retry_on_connection_error(self):
         """Test HyperliquidFetcher retries on ConnectionError."""
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
 
         # Mock candles_snapshot to fail twice, then succeed
         mock_candles = [
-            {'t': 1700000000000, 'o': '40000', 'h': '41000',
-             'l': '39000', 'c': '40500', 'v': '100'}
+            {"t": 1700000000000, "o": "40000", "h": "41000", "l": "39000", "c": "40500", "v": "100"}
         ]
 
-        with patch.object(fetcher.info, 'candles_snapshot') as mock_method:
+        with patch.object(fetcher.info, "candles_snapshot") as mock_method:
             mock_method.side_effect = [
                 ConnectionError("Network timeout"),
                 ConnectionError("Network timeout"),
-                mock_candles  # Success on 3rd attempt
+                mock_candles,  # Success on 3rd attempt
             ]
 
             # Should succeed after retries
             result = fetcher._fetch_candles_with_retry(
-                symbol='BTC',
-                interval='1h',
-                start_time=1700000000000,
-                end_time=1700003600000
+                symbol="BTC", interval="1h", start_time=1700000000000, end_time=1700003600000
             )
 
             assert result == mock_candles
@@ -330,57 +326,49 @@ class TestRetryLogic:
 
     def test_hyperliquid_retry_max_attempts_exceeded(self):
         """Test HyperliquidFetcher raises after max retries."""
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
 
-        with patch.object(fetcher.info, 'candles_snapshot') as mock_method:
+        with patch.object(fetcher.info, "candles_snapshot") as mock_method:
             # Fail all 3 attempts
             mock_method.side_effect = ConnectionError("Network timeout")
 
             with pytest.raises(ConnectionError):
                 fetcher._fetch_candles_with_retry(
-                    symbol='BTC',
-                    interval='1h',
-                    start_time=1700000000000,
-                    end_time=1700003600000
+                    symbol="BTC", interval="1h", start_time=1700000000000, end_time=1700003600000
                 )
 
             assert mock_method.call_count == 3
 
     def test_hyperliquid_get_current_price_retry(self):
         """Test get_current_price retries on failure."""
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
 
-        with patch.object(fetcher.info, 'all_mids') as mock_method:
+        with patch.object(fetcher.info, "all_mids") as mock_method:
             mock_method.side_effect = [
                 ConnectionError("Timeout"),
-                {'BTC': '42000'}  # Success on 2nd attempt
+                {"BTC": "42000"},  # Success on 2nd attempt
             ]
 
-            price = fetcher.get_current_price('BTC')
+            price = fetcher.get_current_price("BTC")
 
             assert price == 42000.0
             assert mock_method.call_count == 2
 
     def test_ccxt_retry_on_network_error(self):
         """Test CCXTFetcher retries on NetworkError."""
-        fetcher = CCXTFetcher('binance')
+        fetcher = CCXTFetcher("binance")
 
-        mock_ohlcv = [
-            [1700000000000, 40000, 41000, 39000, 40500, 1000]
-        ]
+        mock_ohlcv = [[1700000000000, 40000, 41000, 39000, 40500, 1000]]
 
-        with patch.object(fetcher.exchange, 'fetch_ohlcv') as mock_method:
+        with patch.object(fetcher.exchange, "fetch_ohlcv") as mock_method:
             mock_method.side_effect = [
                 ccxt.NetworkError("Connection failed"),
                 ccxt.NetworkError("Connection failed"),
-                mock_ohlcv  # Success on 3rd attempt
+                mock_ohlcv,  # Success on 3rd attempt
             ]
 
             result = fetcher._fetch_ohlcv_with_retry(
-                symbol='BTC/USDT',
-                timeframe='1h',
-                since_ms=None,
-                limit=100
+                symbol="BTC/USDT", timeframe="1h", since_ms=None, limit=100
             )
 
             assert result == mock_ohlcv
@@ -388,19 +376,16 @@ class TestRetryLogic:
 
     def test_ccxt_retry_on_request_timeout(self):
         """Test CCXTFetcher retries on RequestTimeout."""
-        fetcher = CCXTFetcher('binance')
+        fetcher = CCXTFetcher("binance")
 
-        with patch.object(fetcher.exchange, 'fetch_ohlcv') as mock_method:
+        with patch.object(fetcher.exchange, "fetch_ohlcv") as mock_method:
             mock_method.side_effect = [
                 ccxt.RequestTimeout("Timeout"),
-                [[1700000000000, 40000, 41000, 39000, 40500, 1000]]
+                [[1700000000000, 40000, 41000, 39000, 40500, 1000]],
             ]
 
             result = fetcher._fetch_ohlcv_with_retry(
-                symbol='BTC/USDT',
-                timeframe='1h',
-                since_ms=None,
-                limit=100
+                symbol="BTC/USDT", timeframe="1h", since_ms=None, limit=100
             )
 
             assert len(result) == 1
@@ -408,54 +393,56 @@ class TestRetryLogic:
 
     def test_ccxt_retry_max_attempts_exceeded(self):
         """Test CCXTFetcher raises after max retries."""
-        fetcher = CCXTFetcher('binance')
+        fetcher = CCXTFetcher("binance")
 
-        with patch.object(fetcher.exchange, 'fetch_ohlcv') as mock_method:
+        with patch.object(fetcher.exchange, "fetch_ohlcv") as mock_method:
             mock_method.side_effect = ccxt.NetworkError("Persistent failure")
 
             with pytest.raises(ccxt.NetworkError):
                 fetcher._fetch_ohlcv_with_retry(
-                    symbol='BTC/USDT',
-                    timeframe='1h',
-                    since_ms=None,
-                    limit=100
+                    symbol="BTC/USDT", timeframe="1h", since_ms=None, limit=100
                 )
 
             assert mock_method.call_count == 3
 
     def test_ccxt_get_current_price_retry(self):
         """Test CCXT get_current_price retries on network error."""
-        fetcher = CCXTFetcher('binance')
+        fetcher = CCXTFetcher("binance")
 
-        with patch.object(fetcher.exchange, 'fetch_ticker') as mock_method:
+        with patch.object(fetcher.exchange, "fetch_ticker") as mock_method:
             mock_method.side_effect = [
                 ccxt.NetworkError("Network down"),
-                {'last': 42000}  # Success on 2nd attempt
+                {"last": 42000},  # Success on 2nd attempt
             ]
 
-            price = fetcher.get_current_price('BTC/USDT')
+            price = fetcher.get_current_price("BTC/USDT")
 
             assert price == 42000.0
             assert mock_method.call_count == 2
 
     def test_retry_exponential_backoff(self):
         """Test that retry uses exponential backoff."""
-        fetcher = HyperliquidFetcher(network='testnet')
+        fetcher = HyperliquidFetcher(network="testnet")
 
-        with patch.object(fetcher.info, 'candles_snapshot') as mock_method:
-            with patch('time.sleep') as mock_sleep:
+        with patch.object(fetcher.info, "candles_snapshot") as mock_method:
+            with patch("time.sleep") as mock_sleep:
                 mock_method.side_effect = [
                     ConnectionError("Fail 1"),
                     ConnectionError("Fail 2"),
-                    [{'t': 1700000000000, 'o': '40000', 'h': '41000',
-                      'l': '39000', 'c': '40500', 'v': '100'}]
+                    [
+                        {
+                            "t": 1700000000000,
+                            "o": "40000",
+                            "h": "41000",
+                            "l": "39000",
+                            "c": "40500",
+                            "v": "100",
+                        }
+                    ],
                 ]
 
                 fetcher._fetch_candles_with_retry(
-                    symbol='BTC',
-                    interval='1h',
-                    start_time=1700000000000,
-                    end_time=1700003600000
+                    symbol="BTC", interval="1h", start_time=1700000000000, end_time=1700003600000
                 )
 
                 # Should have slept between retries

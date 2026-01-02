@@ -1,15 +1,16 @@
 """Tests for alert system and trade journal."""
 
-import pytest
-import pandas as pd
-from datetime import datetime, timezone
-import sys
 import os
+import sys
+from datetime import UTC, datetime
+
+import pandas as pd
+import pytest
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from notebooks.alert_system import AlertSystem, AlertLevel, Alert, TradeJournal
+from notebooks.alert_system import Alert, AlertLevel, AlertSystem, TradeJournal
 
 
 class TestAlert:
@@ -18,12 +19,12 @@ class TestAlert:
     def test_alert_creation(self):
         """Test creating an alert."""
         alert = Alert(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             level=AlertLevel.HIGH,
             title="Test Alert",
             message="This is a test",
             confidence=75,
-            timeframe="1h"
+            timeframe="1h",
         )
 
         assert alert.level == AlertLevel.HIGH
@@ -34,12 +35,12 @@ class TestAlert:
     def test_alert_string_representation(self):
         """Test alert string output."""
         alert = Alert(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             level=AlertLevel.CRITICAL,
             title="Critical Setup",
             message="High confidence trade",
             confidence=90,
-            timeframe="4h"
+            timeframe="4h",
         )
 
         str_repr = str(alert)
@@ -57,9 +58,7 @@ class TestAlertSystem:
     def alert_system(self):
         """Create alert system for testing."""
         return AlertSystem(
-            min_confidence=70,
-            enable_sound=False,  # Disable sound for tests
-            max_history=10
+            min_confidence=70, enable_sound=False, max_history=10  # Disable sound for tests
         )
 
     def test_initialization(self, alert_system):
@@ -72,10 +71,7 @@ class TestAlertSystem:
     def test_setup_detected_high_confidence(self, alert_system):
         """Test detecting high confidence setup."""
         alert_system.setup_detected(
-            title="Liquidity Sweep",
-            message="BTC swept liquidity",
-            confidence=85,
-            timeframe="1h"
+            title="Liquidity Sweep", message="BTC swept liquidity", confidence=85, timeframe="1h"
         )
 
         # Check alert was created
@@ -89,10 +85,7 @@ class TestAlertSystem:
     def test_setup_detected_medium_confidence(self, alert_system):
         """Test detecting medium confidence setup."""
         alert_system.setup_detected(
-            title="Order Block",
-            message="Testing OB",
-            confidence=75,
-            timeframe="4h"
+            title="Order Block", message="Testing OB", confidence=75, timeframe="4h"
         )
 
         alert = alert_system.alerts[0]
@@ -104,7 +97,7 @@ class TestAlertSystem:
             title="Weak Setup",
             message="Low confidence",
             confidence=65,  # Below 70% threshold
-            timeframe="15m"
+            timeframe="15m",
         )
 
         # Should not create alert
@@ -112,30 +105,27 @@ class TestAlertSystem:
 
     def test_info_alert(self, alert_system):
         """Test info-level alert."""
-        alert_system.info(
-            title="Market Update",
-            message="Volatility increased"
-        )
+        alert_system.info(title="Market Update", message="Volatility increased")
 
         assert len(alert_system.alerts) == 1
         assert alert_system.alerts[0].level == AlertLevel.INFO
 
     def test_callback_registration(self, alert_system):
         """Test callback registration and triggering."""
-        callback_data = {'called': False, 'alert': None}
+        callback_data = {"called": False, "alert": None}
 
         def test_callback(alert):
-            callback_data['called'] = True
-            callback_data['alert'] = alert
+            callback_data["called"] = True
+            callback_data["alert"] = alert
 
         alert_system.on_alert(test_callback)
 
         # Trigger alert
         alert_system.info("Test", "Testing callback")
 
-        assert callback_data['called'] is True
-        assert callback_data['alert'] is not None
-        assert callback_data['alert'].title == "Test"
+        assert callback_data["called"] is True
+        assert callback_data["alert"] is not None
+        assert callback_data["alert"].title == "Test"
 
     def test_max_history_limit(self):
         """Test that history is limited to max_history."""
@@ -172,9 +162,9 @@ class TestAlertSystem:
 
         summary = alert_system.get_alert_summary()
 
-        assert summary['info'] == 1
-        assert summary['high'] == 1
-        assert summary['critical'] == 1
+        assert summary["info"] == 1
+        assert summary["high"] == 1
+        assert summary["critical"] == 1
 
     def test_clear_history(self, alert_system):
         """Test clearing alert history."""
@@ -202,45 +192,45 @@ class TestTradeJournal:
 
     def test_log_setup(self, journal):
         """Test logging a setup."""
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         journal.log_setup(
             timestamp=timestamp,
-            symbol='BTC',
-            timeframe='1h',
-            setup_type='Liquidity Sweep',
+            symbol="BTC",
+            timeframe="1h",
+            setup_type="Liquidity Sweep",
             confidence=78,
             price=50000.0,
-            metadata={'stop_loss': 49500}
+            metadata={"stop_loss": 49500},
         )
 
         assert len(journal.entries) == 1
 
         entry = journal.entries[0]
-        assert entry['symbol'] == 'BTC'
-        assert entry['timeframe'] == '1h'
-        assert entry['confidence'] == 78
-        assert entry['price'] == 50000.0
+        assert entry["symbol"] == "BTC"
+        assert entry["timeframe"] == "1h"
+        assert entry["confidence"] == 78
+        assert entry["price"] == 50000.0
 
     def test_to_dataframe(self, journal):
         """Test converting journal to DataFrame."""
         # Log multiple setups
         for i in range(5):
             journal.log_setup(
-                timestamp=datetime.now(timezone.utc),
-                symbol='BTC',
-                timeframe='1h',
-                setup_type=f'Setup {i}',
+                timestamp=datetime.now(UTC),
+                symbol="BTC",
+                timeframe="1h",
+                setup_type=f"Setup {i}",
                 confidence=70 + i,
-                price=50000 + i * 100
+                price=50000 + i * 100,
             )
 
         df = journal.to_dataframe()
 
         assert isinstance(df, pd.DataFrame)
         assert len(df) == 5
-        assert 'symbol' in df.columns
-        assert 'confidence' in df.columns
+        assert "symbol" in df.columns
+        assert "confidence" in df.columns
         assert isinstance(df.index, pd.DatetimeIndex)
 
     def test_empty_dataframe(self, journal):
@@ -253,58 +243,43 @@ class TestTradeJournal:
     def test_get_statistics(self, journal):
         """Test getting journal statistics."""
         # Log setups with different properties
-        journal.log_setup(
-            datetime.now(timezone.utc),
-            'BTC', '1h', 'Type A', 80, 50000
-        )
-        journal.log_setup(
-            datetime.now(timezone.utc),
-            'BTC', '4h', 'Type A', 90, 51000
-        )
-        journal.log_setup(
-            datetime.now(timezone.utc),
-            'ETH', '1h', 'Type B', 70, 3000
-        )
+        journal.log_setup(datetime.now(UTC), "BTC", "1h", "Type A", 80, 50000)
+        journal.log_setup(datetime.now(UTC), "BTC", "4h", "Type A", 90, 51000)
+        journal.log_setup(datetime.now(UTC), "ETH", "1h", "Type B", 70, 3000)
 
         stats = journal.get_statistics()
 
-        assert stats['total_setups'] == 3
-        assert stats['avg_confidence'] == 80.0
-        assert stats['by_timeframe']['1h'] == 2
-        assert stats['by_timeframe']['4h'] == 1
-        assert stats['by_type']['Type A'] == 2
-        assert stats['by_type']['Type B'] == 1
+        assert stats["total_setups"] == 3
+        assert stats["avg_confidence"] == 80.0
+        assert stats["by_timeframe"]["1h"] == 2
+        assert stats["by_timeframe"]["4h"] == 1
+        assert stats["by_type"]["Type A"] == 2
+        assert stats["by_type"]["Type B"] == 1
 
     def test_empty_statistics(self, journal):
         """Test statistics when journal is empty."""
         stats = journal.get_statistics()
 
-        assert stats['total_setups'] == 0
-        assert stats['avg_confidence'] == 0
-        assert stats['by_timeframe'] == {}
-        assert stats['by_type'] == {}
+        assert stats["total_setups"] == 0
+        assert stats["avg_confidence"] == 0
+        assert stats["by_timeframe"] == {}
+        assert stats["by_type"] == {}
 
     def test_get_recent_entries(self, journal):
         """Test getting recent journal entries."""
         # Log setups
         for i in range(10):
-            journal.log_setup(
-                datetime.now(timezone.utc),
-                'BTC', '1h', f'Setup {i}', 70 + i, 50000
-            )
+            journal.log_setup(datetime.now(UTC), "BTC", "1h", f"Setup {i}", 70 + i, 50000)
 
         recent = journal.get_recent_entries(limit=5)
 
         assert len(recent) == 5
         # Should be most recent
-        assert recent.iloc[-1]['setup_type'] == 'Setup 9'
+        assert recent.iloc[-1]["setup_type"] == "Setup 9"
 
     def test_clear_journal(self, journal):
         """Test clearing journal."""
-        journal.log_setup(
-            datetime.now(timezone.utc),
-            'BTC', '1h', 'Test', 75, 50000
-        )
+        journal.log_setup(datetime.now(UTC), "BTC", "1h", "Test", 75, 50000)
 
         assert len(journal.entries) == 1
 
@@ -313,5 +288,5 @@ class TestTradeJournal:
         assert len(journal.entries) == 0
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

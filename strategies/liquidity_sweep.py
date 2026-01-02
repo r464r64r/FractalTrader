@@ -6,13 +6,12 @@ This is the "liquidity candle" pattern - price sweeps beyond a level,
 then reverses sharply.
 """
 
-from typing import Optional
-import pandas as pd
-import numpy as np
 
+import pandas as pd
+
+from core.liquidity import detect_liquidity_sweep, find_equal_levels
+from core.market_structure import determine_trend, find_swing_points
 from strategies.base import BaseStrategy, Signal
-from core.market_structure import find_swing_points, determine_trend
-from core.liquidity import find_equal_levels, detect_liquidity_sweep
 
 
 class LiquiditySweepStrategy(BaseStrategy):
@@ -34,12 +33,12 @@ class LiquiditySweepStrategy(BaseStrategy):
     """
 
     DEFAULT_PARAMS = {
-        "swing_period": 5,           # Bars for swing detection
+        "swing_period": 5,  # Bars for swing detection
         "min_sweep_percent": 0.001,  # Minimum sweep beyond level (0.1%)
-        "max_reversal_bars": 3,      # Must reverse within N bars
-        "min_rr_ratio": 1.5,         # Minimum risk:reward
-        "tolerance": 0.001,          # Tolerance for equal level detection
-        "atr_period": 14,            # ATR period for volatility
+        "max_reversal_bars": 3,  # Must reverse within N bars
+        "min_rr_ratio": 1.5,  # Minimum risk:reward
+        "tolerance": 0.001,  # Tolerance for equal level detection
+        "atr_period": 14,  # ATR period for volatility
     }
 
     def __init__(self, params: dict | None = None):
@@ -62,16 +61,12 @@ class LiquiditySweepStrategy(BaseStrategy):
 
         # 1. Find swing points
         swing_highs, swing_lows = find_swing_points(
-            data["high"],
-            data["low"],
-            n=self.params["swing_period"]
+            data["high"], data["low"], n=self.params["swing_period"]
         )
 
         # 2. Find equal levels (additional liquidity)
         equal_highs, equal_lows = find_equal_levels(
-            swing_highs,
-            swing_lows,
-            tolerance=self.params["tolerance"]
+            swing_highs, swing_lows, tolerance=self.params["tolerance"]
         )
 
         # 3. Combine swing points and equal levels as liquidity
@@ -87,7 +82,7 @@ class LiquiditySweepStrategy(BaseStrategy):
             data["close"],
             liquidity_levels=bullish_liquidity,
             reversal_bars=self.params["max_reversal_bars"],
-            direction="bullish"
+            direction="bullish",
         )
 
         bearish_sweeps = detect_liquidity_sweep(
@@ -96,7 +91,7 @@ class LiquiditySweepStrategy(BaseStrategy):
             data["close"],
             liquidity_levels=bearish_liquidity,
             reversal_bars=self.params["max_reversal_bars"],
-            direction="bearish"
+            direction="bearish",
         )
 
         # 5. Generate signals
@@ -116,9 +111,7 @@ class LiquiditySweepStrategy(BaseStrategy):
         return signals
 
     def _combine_liquidity_levels(
-        self,
-        swing_levels: pd.Series,
-        equal_levels: pd.Series
+        self, swing_levels: pd.Series, equal_levels: pd.Series
     ) -> pd.Series:
         """
         Combine swing levels and equal levels into single liquidity series.
@@ -134,12 +127,8 @@ class LiquiditySweepStrategy(BaseStrategy):
         return combined
 
     def _create_long_signal(
-        self,
-        data: pd.DataFrame,
-        idx: pd.Timestamp,
-        swing_highs: pd.Series,
-        swing_lows: pd.Series
-    ) -> Optional[Signal]:
+        self, data: pd.DataFrame, idx: pd.Timestamp, swing_highs: pd.Series, swing_lows: pd.Series
+    ) -> Signal | None:
         """
         Create a long signal after bullish liquidity sweep.
 
@@ -189,21 +178,14 @@ class LiquiditySweepStrategy(BaseStrategy):
                 take_profit=take_profit,
                 confidence=confidence,
                 strategy_name=self.name,
-                metadata={
-                    "sweep_low": sweep_low,
-                    "signal_type": "bullish_sweep"
-                }
+                metadata={"sweep_low": sweep_low, "signal_type": "bullish_sweep"},
             )
         except Exception:
             return None
 
     def _create_short_signal(
-        self,
-        data: pd.DataFrame,
-        idx: pd.Timestamp,
-        swing_highs: pd.Series,
-        swing_lows: pd.Series
-    ) -> Optional[Signal]:
+        self, data: pd.DataFrame, idx: pd.Timestamp, swing_highs: pd.Series, swing_lows: pd.Series
+    ) -> Signal | None:
         """
         Create a short signal after bearish liquidity sweep.
 
@@ -253,10 +235,7 @@ class LiquiditySweepStrategy(BaseStrategy):
                 take_profit=take_profit,
                 confidence=confidence,
                 strategy_name=self.name,
-                metadata={
-                    "sweep_high": sweep_high,
-                    "signal_type": "bearish_sweep"
-                }
+                metadata={"sweep_high": sweep_high, "signal_type": "bearish_sweep"},
             )
         except Exception:
             return None
@@ -283,16 +262,14 @@ class LiquiditySweepStrategy(BaseStrategy):
         try:
             # Get recent data for analysis
             lookback = min(50, signal_idx)
-            recent_data = data.iloc[max(0, signal_idx - lookback):signal_idx + 1]
+            recent_data = data.iloc[max(0, signal_idx - lookback) : signal_idx + 1]
 
             if len(recent_data) < 10:
                 return 50  # Default confidence for insufficient data
 
             # 1. Trend alignment (0-30 points)
             swing_h, swing_l = find_swing_points(
-                recent_data["high"],
-                recent_data["low"],
-                n=min(5, len(recent_data) // 4)
+                recent_data["high"], recent_data["low"], n=min(5, len(recent_data) // 4)
             )
             trend = determine_trend(swing_h, swing_l)
 

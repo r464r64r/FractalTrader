@@ -1,8 +1,8 @@
 """Data fetching base interface."""
 
 from abc import ABC, abstractmethod
+
 import pandas as pd
-from typing import Optional, Literal
 
 
 class BaseFetcher(ABC):
@@ -17,9 +17,9 @@ class BaseFetcher(ABC):
     def fetch_ohlcv(
         self,
         symbol: str,
-        timeframe: str = '1h',
-        limit: Optional[int] = None,
-        since: Optional[str] = None
+        timeframe: str = "1h",
+        limit: int | None = None,
+        since: str | None = None,
     ) -> pd.DataFrame:
         """
         Fetch OHLCV data.
@@ -56,7 +56,7 @@ class BaseFetcher(ABC):
         Raises:
             ValueError: If format is incorrect
         """
-        required_columns = ['open', 'high', 'low', 'close', 'volume']
+        required_columns = ["open", "high", "low", "close", "volume"]
 
         if not all(col in df.columns for col in required_columns):
             missing = [c for c in required_columns if c not in df.columns]
@@ -73,10 +73,7 @@ class BaseFetcher(ABC):
 
 # Keep the old function for backward compatibility
 def fetch_ohlcv(
-    symbol: str = "BTC/USDT",
-    timeframe: str = "1h",
-    limit: int = 1000,
-    exchange_id: str = "binance"
+    symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 1000, exchange_id: str = "binance"
 ) -> pd.DataFrame:
     """
     Legacy function for backward compatibility.

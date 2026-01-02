@@ -6,13 +6,13 @@ Critical for Sprint 3 success criteria: "Can stop/restart without losing state"
 
 import json
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from dataclasses import dataclass, asdict, field
 from copy import deepcopy
-from filelock import FileLock, Timeout
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any
 
+from filelock import FileLock, Timeout
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +30,20 @@ class TradingState:
         last_updated: Last state update timestamp
         metadata: Additional state information
     """
-    open_positions: Dict[str, Any] = field(default_factory=dict)
-    trade_history: List[Dict[str, Any]] = field(default_factory=list)
+
+    open_positions: dict[str, Any] = field(default_factory=dict)
+    trade_history: list[dict[str, Any]] = field(default_factory=list)
     starting_balance: float = 0.0
     session_start: str = ""
     last_updated: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert state to dictionary for JSON serialization."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TradingState':
+    def from_dict(cls, data: dict[str, Any]) -> "TradingState":
         """Create state from dictionary."""
         return cls(**data)
 
@@ -66,10 +67,7 @@ class StateManager:
     """
 
     def __init__(
-        self,
-        state_file: str = '.trading_state.json',
-        backup_count: int = 5,
-        auto_save: bool = True
+        self, state_file: str = ".trading_state.json", backup_count: int = 5, auto_save: bool = True
     ):
         """
         Initialize state manager.
@@ -91,11 +89,7 @@ class StateManager:
 
         logger.info(f"StateManager initialized: {self.state_file}")
 
-    def save_position(
-        self,
-        symbol: str,
-        position_data: Dict[str, Any]
-    ) -> None:
+    def save_position(self, symbol: str, position_data: dict[str, Any]) -> None:
         """
         Save or update an open position.
 
@@ -127,7 +121,7 @@ class StateManager:
 
             logger.debug(f"Removed position: {symbol}")
 
-    def load_positions(self) -> Dict[str, Any]:
+    def load_positions(self) -> dict[str, Any]:
         """
         Load all open positions.
 
@@ -136,7 +130,7 @@ class StateManager:
         """
         return deepcopy(self.state.open_positions)
 
-    def save_trade(self, trade_data: Dict[str, Any]) -> None:
+    def save_trade(self, trade_data: dict[str, Any]) -> None:
         """
         Save a trade to history.
 
@@ -152,7 +146,7 @@ class StateManager:
 
         logger.debug(f"Saved trade: {serialized_trade.get('symbol')}")
 
-    def load_trade_history(self) -> List[Dict[str, Any]]:
+    def load_trade_history(self) -> list[dict[str, Any]]:
         """
         Load complete trade history.
 
@@ -213,7 +207,7 @@ class StateManager:
         """
         return self.state.metadata.get(key, default)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get trading session statistics.
 
@@ -225,11 +219,11 @@ class StateManager:
             - last_updated: Last update time
         """
         return {
-            'total_trades': len(self.state.trade_history),
-            'open_positions': len(self.state.open_positions),
-            'session_start': self.state.session_start,
-            'last_updated': self.state.last_updated,
-            'starting_balance': self.state.starting_balance
+            "total_trades": len(self.state.trade_history),
+            "open_positions": len(self.state.open_positions),
+            "session_start": self.state.session_start,
+            "last_updated": self.state.last_updated,
+            "starting_balance": self.state.starting_balance,
         }
 
     def force_save(self) -> None:
@@ -267,7 +261,7 @@ class StateManager:
 
             try:
                 with lock:
-                    with open(self.state_file, 'r') as f:
+                    with open(self.state_file) as f:
                         data = json.load(f)
                     logger.info(f"Loaded state from {self.state_file}")
                     return TradingState.from_dict(data)
@@ -298,7 +292,7 @@ class StateManager:
                     self._create_backup()
 
                 # Write state to file
-                with open(self.state_file, 'w') as f:
+                with open(self.state_file, "w") as f:
                     json.dump(self.state.to_dict(), f, indent=2)
 
                 logger.debug(f"State saved to {self.state_file}")
@@ -315,14 +309,14 @@ class StateManager:
         try:
             # Rotate backups
             for i in range(self.backup_count - 1, 0, -1):
-                old_backup = self.state_file.with_suffix(f'.json.bak{i}')
-                new_backup = self.state_file.with_suffix(f'.json.bak{i+1}')
+                old_backup = self.state_file.with_suffix(f".json.bak{i}")
+                new_backup = self.state_file.with_suffix(f".json.bak{i+1}")
 
                 if old_backup.exists():
                     old_backup.rename(new_backup)
 
             # Create new backup
-            backup_path = self.state_file.with_suffix('.json.bak1')
+            backup_path = self.state_file.with_suffix(".json.bak1")
             self.state_file.rename(backup_path)
 
             # Restore original (we just renamed it)
@@ -330,6 +324,7 @@ class StateManager:
 
             # Copy to backup
             import shutil
+
             shutil.copy2(self.state_file, backup_path)
 
             logger.debug(f"Backup created: {backup_path}")
@@ -347,24 +342,24 @@ class StateManager:
         lock = FileLock(lock_file, timeout=10)
 
         for i in range(1, self.backup_count + 1):
-            backup_path = self.state_file.with_suffix(f'.json.bak{i}')
+            backup_path = self.state_file.with_suffix(f".json.bak{i}")
 
             if not backup_path.exists():
                 continue
 
             try:
                 with lock:
-                    with open(backup_path, 'r') as f:
+                    with open(backup_path) as f:
                         data = json.load(f)
 
                     # Backup is valid, restore it
-                    with open(self.state_file, 'w') as f:
+                    with open(self.state_file, "w") as f:
                         json.dump(data, f, indent=2)
 
                     logger.info(f"Recovered from backup: {backup_path}")
                     return True
             except Timeout:
-                logger.error(f"Failed to acquire file lock for recovery (timeout)")
+                logger.error("Failed to acquire file lock for recovery (timeout)")
                 continue
             except Exception as e:
                 logger.warning(f"Backup {backup_path} corrupted: {e}")
@@ -373,7 +368,7 @@ class StateManager:
         logger.error("No valid backups found")
         return False
 
-    def _serialize_position(self, position_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _serialize_position(self, position_data: dict[str, Any]) -> dict[str, Any]:
         """
         Serialize position data for JSON storage.
 
@@ -384,12 +379,12 @@ class StateManager:
         for key, value in serialized.items():
             if isinstance(value, datetime):
                 serialized[key] = value.isoformat()
-            elif hasattr(value, 'to_dict'):
+            elif hasattr(value, "to_dict"):
                 serialized[key] = value.to_dict()
 
         return serialized
 
-    def _serialize_trade(self, trade_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _serialize_trade(self, trade_data: dict[str, Any]) -> dict[str, Any]:
         """
         Serialize trade data for JSON storage.
 
@@ -400,7 +395,7 @@ class StateManager:
         for key, value in serialized.items():
             if isinstance(value, datetime):
                 serialized[key] = value.isoformat()
-            elif hasattr(value, 'to_dict'):
+            elif hasattr(value, "to_dict"):
                 serialized[key] = value.to_dict()
 
         return serialized

@@ -1,15 +1,17 @@
 """Alert system for trading setups - visual and audio notifications."""
 
 import logging
-from typing import Optional, Callable, List, Dict
-from datetime import datetime, timezone
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
+
 import pandas as pd
 
 # Audio support (optional - works in Jupyter)
 try:
-    from IPython.display import Audio, display, HTML
+    from IPython.display import HTML, Audio, display
+
     AUDIO_AVAILABLE = True
 except ImportError:
     AUDIO_AVAILABLE = False
@@ -20,22 +22,24 @@ logger = logging.getLogger(__name__)
 
 class AlertLevel(Enum):
     """Alert severity levels."""
-    INFO = "info"       # FYI - low importance
-    SETUP = "setup"     # Valid setup detected
-    HIGH = "high"       # High confidence setup (>70%)
+
+    INFO = "info"  # FYI - low importance
+    SETUP = "setup"  # Valid setup detected
+    HIGH = "high"  # High confidence setup (>70%)
     CRITICAL = "critical"  # Extremely high confidence (>85%)
 
 
 @dataclass
 class Alert:
     """Trading setup alert."""
+
     timestamp: datetime
     level: AlertLevel
     title: str
     message: str
-    confidence: Optional[float] = None
-    timeframe: Optional[str] = None
-    metadata: Optional[dict] = None
+    confidence: float | None = None
+    timeframe: str | None = None
+    metadata: dict | None = None
 
     def __str__(self):
         """String representation."""
@@ -67,10 +71,7 @@ class AlertSystem:
     """
 
     def __init__(
-        self,
-        min_confidence: float = 70,
-        enable_sound: bool = True,
-        max_history: int = 100
+        self, min_confidence: float = 70, enable_sound: bool = True, max_history: int = 100
     ):
         """
         Initialize alert system.
@@ -85,10 +86,10 @@ class AlertSystem:
         self.max_history = max_history
 
         # Alert history
-        self.alerts: List[Alert] = []
+        self.alerts: list[Alert] = []
 
         # Callbacks for custom handling
-        self._callbacks: List[Callable[[Alert], None]] = []
+        self._callbacks: list[Callable[[Alert], None]] = []
 
         logger.info(
             f"AlertSystem initialized: min_confidence={min_confidence}%, "
@@ -111,7 +112,7 @@ class AlertSystem:
         message: str,
         confidence: float,
         timeframe: str,
-        metadata: Optional[dict] = None
+        metadata: dict | None = None,
     ):
         """
         Notify about detected trading setup.
@@ -142,7 +143,7 @@ class AlertSystem:
             message=message,
             confidence=confidence,
             timeframe=timeframe,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def info(self, title: str, message: str, **kwargs):
@@ -154,9 +155,9 @@ class AlertSystem:
         level: AlertLevel,
         title: str,
         message: str,
-        confidence: Optional[float] = None,
-        timeframe: Optional[str] = None,
-        metadata: Optional[dict] = None
+        confidence: float | None = None,
+        timeframe: str | None = None,
+        metadata: dict | None = None,
     ):
         """
         Internal: trigger an alert.
@@ -170,13 +171,13 @@ class AlertSystem:
             metadata: Additional data (optional)
         """
         alert = Alert(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             level=level,
             title=title,
             message=message,
             confidence=confidence,
             timeframe=timeframe,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Add to history
@@ -204,10 +205,10 @@ class AlertSystem:
         """Display alert in Jupyter notebook."""
         # Color based on level
         colors = {
-            AlertLevel.INFO: "#3b82f6",      # Blue
-            AlertLevel.SETUP: "#10b981",     # Green
-            AlertLevel.HIGH: "#f59e0b",      # Orange
-            AlertLevel.CRITICAL: "#ef4444"   # Red
+            AlertLevel.INFO: "#3b82f6",  # Blue
+            AlertLevel.SETUP: "#10b981",  # Green
+            AlertLevel.HIGH: "#f59e0b",  # Orange
+            AlertLevel.CRITICAL: "#ef4444",  # Red
         }
 
         # Emoji based on level
@@ -215,7 +216,7 @@ class AlertSystem:
             AlertLevel.INFO: "ℹ️",
             AlertLevel.SETUP: "✅",
             AlertLevel.HIGH: "🔔",
-            AlertLevel.CRITICAL: "🚨"
+            AlertLevel.CRITICAL: "🚨",
         }
 
         color = colors.get(alert.level, "#6b7280")
@@ -234,7 +235,7 @@ class AlertSystem:
         # Format timestamp
         time_str = alert.timestamp.strftime("%H:%M:%S")
 
-        html = f'''
+        html = f"""
         <div style="
             background: linear-gradient(135deg, {color}15 0%, {color}05 100%);
             border-left: 4px solid {color};
@@ -254,7 +255,7 @@ class AlertSystem:
                 {alert.message}
             </div>
         </div>
-        '''
+        """
 
         if AUDIO_AVAILABLE:
             display(HTML(html))
@@ -289,7 +290,7 @@ class AlertSystem:
         except Exception as e:
             logger.debug(f"Sound playback failed: {e}")
 
-    def get_recent_alerts(self, limit: int = 10) -> List[Alert]:
+    def get_recent_alerts(self, limit: int = 10) -> list[Alert]:
         """
         Get recent alerts.
 
@@ -301,7 +302,7 @@ class AlertSystem:
         """
         return list(reversed(self.alerts[-limit:]))
 
-    def get_alert_summary(self) -> Dict[str, int]:
+    def get_alert_summary(self) -> dict[str, int]:
         """
         Get alert statistics.
 
@@ -332,7 +333,7 @@ class TradeJournal:
 
     def __init__(self):
         """Initialize trade journal."""
-        self.entries: List[Dict] = []
+        self.entries: list[dict] = []
 
         logger.info("TradeJournal initialized")
 
@@ -344,7 +345,7 @@ class TradeJournal:
         setup_type: str,
         confidence: float,
         price: float,
-        metadata: Optional[dict] = None
+        metadata: dict | None = None,
     ):
         """
         Log a detected setup.
@@ -359,13 +360,13 @@ class TradeJournal:
             metadata: Additional data
         """
         entry = {
-            'timestamp': timestamp,
-            'symbol': symbol,
-            'timeframe': timeframe,
-            'setup_type': setup_type,
-            'confidence': confidence,
-            'price': price,
-            'metadata': metadata or {}
+            "timestamp": timestamp,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "setup_type": setup_type,
+            "confidence": confidence,
+            "price": price,
+            "metadata": metadata or {},
         }
 
         self.entries.append(entry)
@@ -382,8 +383,8 @@ class TradeJournal:
             return pd.DataFrame()
 
         df = pd.DataFrame(self.entries)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df.set_index('timestamp', inplace=True)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
 
         return df
 
@@ -395,25 +396,20 @@ class TradeJournal:
             Dict with statistics
         """
         if not self.entries:
-            return {
-                'total_setups': 0,
-                'avg_confidence': 0,
-                'by_timeframe': {},
-                'by_type': {}
-            }
+            return {"total_setups": 0, "avg_confidence": 0, "by_timeframe": {}, "by_type": {}}
 
         df = self.to_dataframe()
 
         return {
-            'total_setups': len(df),
-            'avg_confidence': df['confidence'].mean(),
-            'by_timeframe': df.groupby('timeframe').size().to_dict(),
-            'by_type': df.groupby('setup_type').size().to_dict(),
-            'confidence_distribution': {
-                'min': df['confidence'].min(),
-                'max': df['confidence'].max(),
-                'median': df['confidence'].median()
-            }
+            "total_setups": len(df),
+            "avg_confidence": df["confidence"].mean(),
+            "by_timeframe": df.groupby("timeframe").size().to_dict(),
+            "by_type": df.groupby("setup_type").size().to_dict(),
+            "confidence_distribution": {
+                "min": df["confidence"].min(),
+                "max": df["confidence"].max(),
+                "median": df["confidence"].median(),
+            },
         }
 
     def get_recent_entries(self, limit: int = 10) -> pd.DataFrame:

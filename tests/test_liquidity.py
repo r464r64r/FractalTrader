@@ -1,18 +1,17 @@
 """Tests for liquidity detection."""
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+
 from core.liquidity import (
-    find_equal_levels,
     detect_liquidity_sweep,
+    find_equal_levels,
     find_liquidity_zones,
     get_nearest_liquidity,
 )
 from core.market_structure import find_swing_points
 
 # Import fixtures
-from tests.fixtures.sample_data import sample_ohlcv, liquidity_sweep_data
 
 
 class TestFindEqualLevels:
@@ -28,7 +27,7 @@ class TestFindEqualLevels:
         # Place swing highs at similar levels
         highs.iloc[5] = 100.0
         highs.iloc[10] = 100.05  # Within 0.1% tolerance
-        highs.iloc[15] = 99.95   # Within 0.1% tolerance
+        highs.iloc[15] = 99.95  # Within 0.1% tolerance
 
         equal_highs, equal_lows = find_equal_levels(highs, lows, tolerance=0.001)
 
@@ -43,8 +42,8 @@ class TestFindEqualLevels:
 
         # Place swing lows at similar levels
         lows.iloc[5] = 95.0
-        lows.iloc[12] = 95.02   # Within 0.1% tolerance
-        lows.iloc[20] = 94.98   # Within 0.1% tolerance
+        lows.iloc[12] = 95.02  # Within 0.1% tolerance
+        lows.iloc[20] = 94.98  # Within 0.1% tolerance
 
         equal_highs, equal_lows = find_equal_levels(highs, lows, tolerance=0.001)
 
@@ -92,10 +91,7 @@ class TestFindEqualLevels:
 
     def test_returns_same_index(self, sample_ohlcv):
         """Return series should have same index as input."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         equal_highs, equal_lows = find_equal_levels(swing_highs, swing_lows)
 
@@ -119,7 +115,7 @@ class TestDetectLiquiditySweep:
             liquidity_sweep_data["close"],
             liquidity_levels,
             reversal_bars=3,
-            direction="bullish"
+            direction="bullish",
         )
 
         # Should detect the sweep when price closes back above 98
@@ -130,11 +126,14 @@ class TestDetectLiquiditySweep:
         dates = pd.date_range("2024-01-01", periods=15, freq="1h")
 
         # Create bearish sweep pattern: resistance at 100, break above, then reject
-        data = pd.DataFrame({
-            "high":  [99, 99, 99, 99, 102, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89],
-            "low":   [97, 97, 97, 97, 99, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87],
-            "close": [98, 98, 98, 98, 100, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88],
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "high": [99, 99, 99, 99, 102, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89],
+                "low": [97, 97, 97, 97, 99, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87],
+                "close": [98, 98, 98, 98, 100, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88],
+            },
+            index=dates,
+        )
 
         liquidity_levels = pd.Series(np.nan, index=dates)
         liquidity_levels.iloc[2] = 99.0  # Resistance level
@@ -145,7 +144,7 @@ class TestDetectLiquiditySweep:
             data["close"],
             liquidity_levels,
             reversal_bars=3,
-            direction="bearish"
+            direction="bearish",
         )
 
         # Should detect the sweep when price closes back below 99
@@ -157,11 +156,17 @@ class TestDetectLiquiditySweep:
 
         # Slow reversal (takes 5+ bars) - bullish sweep only
         # Highs stay below the level to avoid triggering bearish sweep
-        data = pd.DataFrame({
-            "high":  [97] * 5 + [97, 97, 97, 97, 97, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111],
-            "low":   [95] * 5 + [92, 93, 93, 93, 94, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108],
-            "close": [96] * 5 + [93, 93, 94, 94, 95, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109],
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "high": [97] * 5
+                + [97, 97, 97, 97, 97, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111],
+                "low": [95] * 5
+                + [92, 93, 93, 93, 94, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108],
+                "close": [96] * 5
+                + [93, 93, 94, 94, 95, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109],
+            },
+            index=dates,
+        )
 
         liquidity_levels = pd.Series(np.nan, index=dates)
         liquidity_levels.iloc[3] = 98.0
@@ -173,7 +178,7 @@ class TestDetectLiquiditySweep:
             data["close"],
             liquidity_levels,
             reversal_bars=2,
-            direction="bullish"
+            direction="bullish",
         )
 
         # Should not detect sweep with tight reversal bars
@@ -185,23 +190,24 @@ class TestDetectLiquiditySweep:
         dates = pd.date_range("2024-01-01", periods=10, freq="1h")
 
         # Bullish sweep pattern - keep highs below level to avoid bearish trigger
-        data = pd.DataFrame({
-            "high":  [97, 97, 97, 96, 103, 105, 106, 107, 108, 109],
-            "low":   [95, 95, 95, 92, 99, 101, 102, 103, 104, 105],
-            "close": [96, 96, 96, 93, 102, 104, 105, 106, 107, 108],
-        }, index=dates)
+        data = pd.DataFrame(
+            {
+                "high": [97, 97, 97, 96, 103, 105, 106, 107, 108, 109],
+                "low": [95, 95, 95, 92, 99, 101, 102, 103, 104, 105],
+                "close": [96, 96, 96, 93, 102, 104, 105, 106, 107, 108],
+            },
+            index=dates,
+        )
 
         liquidity_levels = pd.Series(np.nan, index=dates)
         liquidity_levels.iloc[1] = 98.0  # Level at 98
 
         bullish = detect_liquidity_sweep(
-            data["high"], data["low"], data["close"],
-            liquidity_levels, direction="bullish"
+            data["high"], data["low"], data["close"], liquidity_levels, direction="bullish"
         )
 
         bearish = detect_liquidity_sweep(
-            data["high"], data["low"], data["close"],
-            liquidity_levels, direction="bearish"
+            data["high"], data["low"], data["close"], liquidity_levels, direction="bearish"
         )
 
         # Bullish sweep should be detected (low[3]=92 < 98, then close[4]=102 > 98)
@@ -211,16 +217,10 @@ class TestDetectLiquiditySweep:
 
     def test_returns_boolean_series(self, sample_ohlcv):
         """Should return boolean series."""
-        swing_highs, swing_lows = find_swing_points(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"]
-        )
+        swing_highs, swing_lows = find_swing_points(sample_ohlcv["high"], sample_ohlcv["low"])
 
         sweeps = detect_liquidity_sweep(
-            sample_ohlcv["high"],
-            sample_ohlcv["low"],
-            sample_ohlcv["close"],
-            swing_lows
+            sample_ohlcv["high"], sample_ohlcv["low"], sample_ohlcv["close"], swing_lows
         )
 
         assert sweeps.dtype == bool
@@ -285,7 +285,7 @@ class TestGetNearestLiquidity:
             swing_highs=highs,
             swing_lows=lows,
             current_idx=dates[15],
-            direction="above"
+            direction="above",
         )
 
         assert result is not None
@@ -306,7 +306,7 @@ class TestGetNearestLiquidity:
             swing_highs=highs,
             swing_lows=lows,
             current_idx=dates[15],
-            direction="below"
+            direction="below",
         )
 
         assert result is not None
@@ -320,10 +320,7 @@ class TestGetNearestLiquidity:
         lows = pd.Series(np.nan, index=dates)
 
         result = get_nearest_liquidity(
-            price=100.0,
-            swing_highs=highs,
-            swing_lows=lows,
-            current_idx=dates[15]
+            price=100.0, swing_highs=highs, swing_lows=lows, current_idx=dates[15]
         )
 
         assert result is None
@@ -342,7 +339,7 @@ class TestGetNearestLiquidity:
             swing_highs=highs,
             swing_lows=lows,
             current_idx=dates[10],  # Before the high
-            direction="above"
+            direction="above",
         )
 
         assert result is None  # Future level should not be found

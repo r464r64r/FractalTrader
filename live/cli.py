@@ -15,36 +15,34 @@ Usage:
 
 import argparse
 import logging
-import sys
 import signal
+import sys
 from pathlib import Path
-from typing import Optional
 
 from live.hl_integration.config import HyperliquidConfig
 from live.hl_integration.testnet import HyperliquidTestnetTrader
-from live.state_manager import StateManager
 from live.reporting import PerformanceReporter
+from live.state_manager import StateManager
+from strategies.bos_orderblock import BOSOrderBlockStrategy
+from strategies.fvg_fill import FVGFillStrategy
 
 # Import strategies
 from strategies.liquidity_sweep import LiquiditySweepStrategy
-from strategies.fvg_fill import FVGFillStrategy
-from strategies.bos_orderblock import BOSOrderBlockStrategy
-
 
 logger = logging.getLogger(__name__)
 
 
 # PID file for tracking running bot
-PID_FILE = Path('.trading_bot.pid')
-STATE_FILE = Path('.testnet_state.json')
+PID_FILE = Path(".trading_bot.pid")
+STATE_FILE = Path(".testnet_state.json")
 
 
-def setup_logging(level: str = 'INFO') -> None:
+def setup_logging(level: str = "INFO") -> None:
     """Setup logging configuration."""
     logging.basicConfig(
         level=getattr(logging, level.upper()),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
 
@@ -62,15 +60,14 @@ def get_strategy(strategy_name: str):
         ValueError: If strategy not found
     """
     strategies = {
-        'liquidity_sweep': LiquiditySweepStrategy,
-        'fvg_fill': FVGFillStrategy,
-        'bos_orderblock': BOSOrderBlockStrategy
+        "liquidity_sweep": LiquiditySweepStrategy,
+        "fvg_fill": FVGFillStrategy,
+        "bos_orderblock": BOSOrderBlockStrategy,
     }
 
     if strategy_name not in strategies:
         raise ValueError(
-            f"Unknown strategy: {strategy_name}. "
-            f"Available: {list(strategies.keys())}"
+            f"Unknown strategy: {strategy_name}. " f"Available: {list(strategies.keys())}"
         )
 
     return strategies[strategy_name]()
@@ -98,12 +95,12 @@ def cmd_start(args: argparse.Namespace) -> int:
 
     print("🚀 Starting paper trading bot...")
     print(f"Strategy: {args.strategy}")
-    print(f"Network: testnet")
+    print("Network: testnet")
     print(f"Duration: {args.duration}s" if args.duration else "Duration: unlimited")
 
     try:
         # Load config
-        config = HyperliquidConfig.from_env(network='testnet')
+        config = HyperliquidConfig.from_env(network="testnet")
         config.log_level = args.log_level
 
         # Get strategy
@@ -111,9 +108,7 @@ def cmd_start(args: argparse.Namespace) -> int:
 
         # Create trader
         trader = HyperliquidTestnetTrader(
-            config=config,
-            strategy=strategy,
-            state_file=str(STATE_FILE)
+            config=config, strategy=strategy, state_file=str(STATE_FILE)
         )
 
         # Write PID file
@@ -208,24 +203,24 @@ def cmd_status(args: argparse.Namespace) -> int:
         state_manager = StateManager(state_file=str(STATE_FILE), auto_save=False)
         stats = state_manager.get_stats()
 
-        print(f"\n📈 Session Info:")
+        print("\n📈 Session Info:")
         print(f"  Started: {stats['session_start']}")
         print(f"  Last Updated: {stats['last_updated']}")
         print(f"  Starting Balance: ${stats['starting_balance']:,.2f}")
 
-        print(f"\n💼 Positions:")
+        print("\n💼 Positions:")
         print(f"  Open: {stats['open_positions']}")
 
-        print(f"\n📊 Trades:")
+        print("\n📊 Trades:")
         print(f"  Total: {stats['total_trades']}")
 
         # Show open positions
         positions = state_manager.load_positions()
         if positions:
-            print(f"\n🔓 Open Positions:")
+            print("\n🔓 Open Positions:")
             for symbol, pos in positions.items():
-                entry = pos.get('entry_price', 0)
-                size = pos.get('size', 0)
+                entry = pos.get("entry_price", 0)
+                size = pos.get("size", 0)
                 print(f"  {symbol}: {size:.4f} @ ${entry:,.2f}")
 
         print("=" * 60)
@@ -264,7 +259,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         # Calculate current balance (simplified - just starting + PnL from trades)
         current_balance = starting_balance
         for trade in trade_history:
-            pnl = trade.get('pnl', 0)
+            pnl = trade.get("pnl", 0)
             current_balance += pnl
 
         # Generate report
@@ -272,7 +267,7 @@ def cmd_report(args: argparse.Namespace) -> int:
             starting_balance=starting_balance,
             open_positions=positions,
             trade_history=trade_history,
-            session_start=session_start
+            session_start=session_start,
         )
 
         metrics = reporter.calculate_metrics(current_balance)
@@ -301,7 +296,7 @@ def main() -> int:
         Exit code
     """
     parser = argparse.ArgumentParser(
-        description='FractalTrader Paper Trading Bot',
+        description="FractalTrader Paper Trading Bot",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -322,72 +317,69 @@ Examples:
 
   # Stop running bot
   python -m live.cli stop
-        """
+        """,
     )
 
-    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Start command
-    start_parser = subparsers.add_parser('start', help='Start paper trading bot')
+    start_parser = subparsers.add_parser("start", help="Start paper trading bot")
     start_parser.add_argument(
-        '--strategy',
+        "--strategy",
         type=str,
-        default='liquidity_sweep',
-        choices=['liquidity_sweep', 'fvg_fill', 'bos_orderblock'],
-        help='Trading strategy to use (default: liquidity_sweep)'
+        default="liquidity_sweep",
+        choices=["liquidity_sweep", "fvg_fill", "bos_orderblock"],
+        help="Trading strategy to use (default: liquidity_sweep)",
     )
     start_parser.add_argument(
-        '--duration',
+        "--duration",
         type=int,
         default=None,
-        help='Trading duration in seconds (default: unlimited)'
+        help="Trading duration in seconds (default: unlimited)",
     )
     start_parser.add_argument(
-        '--log-level',
+        "--log-level",
         type=str,
-        default='INFO',
-        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
-        help='Logging level (default: INFO)'
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level (default: INFO)",
     )
 
     # Stop command
-    subparsers.add_parser('stop', help='Stop running bot')
+    subparsers.add_parser("stop", help="Stop running bot")
 
     # Status command
-    subparsers.add_parser('status', help='Show bot status')
+    subparsers.add_parser("status", help="Show bot status")
 
     # Report command
-    report_parser = subparsers.add_parser('report', help='Generate performance report')
+    report_parser = subparsers.add_parser("report", help="Generate performance report")
     report_parser.add_argument(
-        '--output',
-        type=str,
-        default=None,
-        help='Save report to file (e.g., report.json)'
+        "--output", type=str, default=None, help="Save report to file (e.g., report.json)"
     )
     report_parser.add_argument(
-        '--format',
+        "--format",
         type=str,
-        default='json',
-        choices=['json', 'csv'],
-        help='Report format (default: json)'
+        default="json",
+        choices=["json", "csv"],
+        help="Report format (default: json)",
     )
 
     # Parse arguments
     args = parser.parse_args()
 
     # Execute command
-    if args.command == 'start':
+    if args.command == "start":
         return cmd_start(args)
-    elif args.command == 'stop':
+    elif args.command == "stop":
         return cmd_stop(args)
-    elif args.command == 'status':
+    elif args.command == "status":
         return cmd_status(args)
-    elif args.command == 'report':
+    elif args.command == "report":
         return cmd_report(args)
     else:
         parser.print_help()
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

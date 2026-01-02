@@ -36,19 +36,19 @@ class RiskParameters:
         ... )
     """
 
-    base_risk_percent: float = 0.02      # 2% base risk per trade
-    max_position_percent: float = 0.05   # 5% max single position
-    min_confidence: int = 40             # Minimum confidence to trade
+    base_risk_percent: float = 0.02  # 2% base risk per trade
+    max_position_percent: float = 0.05  # 5% max single position
+    min_confidence: int = 40  # Minimum confidence to trade
 
     # Volatility adjustment
     atr_period: int = 14
     atr_baseline_multiplier: float = 1.0  # Size multiplier at baseline ATR
 
     # Win/loss adjustments
-    consecutive_wins_reduce: int = 3      # Reduce size after N wins
-    consecutive_losses_reduce: int = 2    # Reduce size after N losses
-    win_reduction_factor: float = 0.8     # Multiply size by this after win streak
-    loss_reduction_factor: float = 0.7    # Multiply size by this after loss streak
+    consecutive_wins_reduce: int = 3  # Reduce size after N wins
+    consecutive_losses_reduce: int = 2  # Reduce size after N losses
+    win_reduction_factor: float = 0.8  # Multiply size by this after win streak
+    loss_reduction_factor: float = 0.7  # Multiply size by this after loss streak
 
 
 def calculate_position_size(
@@ -60,7 +60,7 @@ def calculate_position_size(
     baseline_atr: float,
     consecutive_wins: int,
     consecutive_losses: int,
-    params: RiskParameters
+    params: RiskParameters,
 ) -> float:
     """
     Calculate position size based on risk parameters.
@@ -167,10 +167,7 @@ def calculate_position_size(
     return position_size
 
 
-def calculate_position_value(
-    position_size: float,
-    entry_price: float
-) -> float:
+def calculate_position_value(position_size: float, entry_price: float) -> float:
     """
     Calculate total position value in base currency.
 
@@ -190,10 +187,7 @@ def calculate_position_value(
 
 
 def calculate_risk_percent(
-    position_size: float,
-    entry_price: float,
-    stop_loss_price: float,
-    portfolio_value: float
+    position_size: float, entry_price: float, stop_loss_price: float, portfolio_value: float
 ) -> float:
     """
     Calculate actual risk as percentage of portfolio.

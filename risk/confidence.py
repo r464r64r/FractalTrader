@@ -32,20 +32,20 @@ class ConfidenceFactors:
     """
 
     # Timeframe alignment (0-30 points)
-    htf_trend_aligned: bool = False      # +15 if higher TF confirms direction
-    htf_structure_clean: bool = False    # +15 if HTF structure is clear
+    htf_trend_aligned: bool = False  # +15 if higher TF confirms direction
+    htf_structure_clean: bool = False  # +15 if HTF structure is clear
 
     # Pattern strength (0-30 points)
-    pattern_clean: bool = False          # +10 if pattern is textbook
-    multiple_confluences: int = 0        # +5 per additional confluence (max 20)
+    pattern_clean: bool = False  # +10 if pattern is textbook
+    multiple_confluences: int = 0  # +5 per additional confluence (max 20)
 
     # Volume confirmation (0-20 points)
-    volume_spike: bool = False           # +10 if volume confirms
-    volume_divergence: bool = False      # +10 if volume divergence present
+    volume_spike: bool = False  # +10 if volume confirms
+    volume_divergence: bool = False  # +10 if volume divergence present
 
     # Market regime (0-20 points)
-    trending_market: bool = False        # +10 if clear trend
-    low_volatility: bool = False         # +10 if ATR is manageable
+    trending_market: bool = False  # +10 if clear trend
+    low_volatility: bool = False  # +10 if ATR is manageable
 
     def calculate_score(self) -> int:
         """

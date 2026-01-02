@@ -1,11 +1,13 @@
 """Tests for risk management modules."""
+
 import pytest
+
 from risk.confidence import ConfidenceFactors
 from risk.position_sizing import (
-    calculate_position_size,
     RiskParameters,
+    calculate_position_size,
     calculate_position_value,
-    calculate_risk_percent
+    calculate_risk_percent,
 )
 
 
@@ -28,40 +30,30 @@ class TestConfidenceFactors:
             volume_spike=True,
             volume_divergence=True,
             trending_market=True,
-            low_volatility=True
+            low_volatility=True,
         )
         assert factors.calculate_score() == 100
 
     def test_htf_alignment_adds_30_points(self):
         """HTF alignment factors should add exactly 30 points."""
-        factors = ConfidenceFactors(
-            htf_trend_aligned=True,    # +15
-            htf_structure_clean=True   # +15
-        )
+        factors = ConfidenceFactors(htf_trend_aligned=True, htf_structure_clean=True)  # +15  # +15
         assert factors.calculate_score() == 30
 
     def test_pattern_strength_adds_30_points(self):
         """Pattern strength factors should add exactly 30 points."""
         factors = ConfidenceFactors(
-            pattern_clean=True,         # +10
-            multiple_confluences=4      # +20 (4 × 5, capped)
+            pattern_clean=True, multiple_confluences=4  # +10  # +20 (4 × 5, capped)
         )
         assert factors.calculate_score() == 30
 
     def test_volume_confirmation_adds_20_points(self):
         """Volume confirmation factors should add exactly 20 points."""
-        factors = ConfidenceFactors(
-            volume_spike=True,          # +10
-            volume_divergence=True      # +10
-        )
+        factors = ConfidenceFactors(volume_spike=True, volume_divergence=True)  # +10  # +10
         assert factors.calculate_score() == 20
 
     def test_market_regime_adds_20_points(self):
         """Market regime factors should add exactly 20 points."""
-        factors = ConfidenceFactors(
-            trending_market=True,       # +10
-            low_volatility=True         # +10
-        )
+        factors = ConfidenceFactors(trending_market=True, low_volatility=True)  # +10  # +10
         assert factors.calculate_score() == 20
 
     def test_multiple_confluences_capped_at_20(self):
@@ -89,7 +81,7 @@ class TestConfidenceFactors:
             volume_spike=True,
             volume_divergence=True,
             trending_market=True,
-            low_volatility=True
+            low_volatility=True,
         )
         # 15 + 15 + 10 + 20 + 10 + 10 + 10 + 10 = 100
         assert factors.calculate_score() == 100
@@ -104,7 +96,7 @@ class TestConfidenceFactors:
             volume_spike=True,
             volume_divergence=True,
             trending_market=True,
-            low_volatility=True
+            low_volatility=True,
         )
         assert factors.calculate_score() == 100
 
@@ -124,7 +116,7 @@ class TestPositionSizing:
             baseline_atr=2,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         position_value = size * 100
         assert position_value <= 10000 * 0.05  # Should be ≤ $500
@@ -141,7 +133,7 @@ class TestPositionSizing:
             baseline_atr=2,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -157,7 +149,7 @@ class TestPositionSizing:
             baseline_atr=2,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -175,7 +167,7 @@ class TestPositionSizing:
             baseline_atr=5,  # Normal = baseline
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # High volatility (2x baseline) - should reduce size
@@ -188,7 +180,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         assert size_high_vol < size_normal
@@ -207,7 +199,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # 3x volatility (should be capped at 0.5x multiplier)
@@ -220,7 +212,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # High vol should be ~0.5x of baseline (capped)
@@ -241,7 +233,7 @@ class TestPositionSizing:
             baseline_atr=10,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # Very low volatility (should be capped at 1.5x multiplier)
@@ -254,7 +246,7 @@ class TestPositionSizing:
             baseline_atr=10,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # Low vol should be ~1.5x of baseline (capped)
@@ -266,7 +258,7 @@ class TestPositionSizing:
         params = RiskParameters(
             consecutive_wins_reduce=3,
             win_reduction_factor=0.8,
-            max_position_percent=0.5  # Large cap to avoid hitting it
+            max_position_percent=0.5,  # Large cap to avoid hitting it
         )
 
         # No streak
@@ -279,7 +271,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # Win streak
@@ -292,7 +284,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=3,  # Trigger reduction
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         assert size_win_streak < size_no_streak
@@ -303,7 +295,7 @@ class TestPositionSizing:
         params = RiskParameters(
             consecutive_losses_reduce=2,
             loss_reduction_factor=0.7,
-            max_position_percent=0.5  # Large cap to avoid hitting it
+            max_position_percent=0.5,  # Large cap to avoid hitting it
         )
 
         # No streak
@@ -316,7 +308,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
 
         # Loss streak
@@ -329,7 +321,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=2,  # Trigger reduction
-            params=params
+            params=params,
         )
 
         assert size_loss_streak < size_no_streak
@@ -347,7 +339,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -363,7 +355,7 @@ class TestPositionSizing:
             baseline_atr=2,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -379,7 +371,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -395,7 +387,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -411,7 +403,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size == 0.0
 
@@ -429,7 +421,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size_high == 0.0
 
@@ -443,7 +435,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size_low == 0.0
 
@@ -461,7 +453,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size_curr == 0.0
 
@@ -475,7 +467,7 @@ class TestPositionSizing:
             baseline_atr=-5,
             consecutive_wins=0,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size_base == 0.0
 
@@ -493,7 +485,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=-3,
             consecutive_losses=0,
-            params=params
+            params=params,
         )
         assert size_wins == 0.0
 
@@ -507,7 +499,7 @@ class TestPositionSizing:
             baseline_atr=5,
             consecutive_wins=0,
             consecutive_losses=-2,
-            params=params
+            params=params,
         )
         assert size_losses == 0.0
 
@@ -529,28 +521,19 @@ class TestPositionSizing:
         # Portfolio: $10000
         # Risk%: $80 / $10000 = 0.008 = 0.8%
         risk_pct = calculate_risk_percent(
-            position_size=40,
-            entry_price=100,
-            stop_loss_price=98,
-            portfolio_value=10000
+            position_size=40, entry_price=100, stop_loss_price=98, portfolio_value=10000
         )
         assert risk_pct == pytest.approx(0.008, rel=0.001)
 
     def test_zero_portfolio_value_in_risk_percent(self):
         """Zero portfolio value should return 0% risk."""
         risk_pct = calculate_risk_percent(
-            position_size=40,
-            entry_price=100,
-            stop_loss_price=98,
-            portfolio_value=0
+            position_size=40, entry_price=100, stop_loss_price=98, portfolio_value=0
         )
         assert risk_pct == 0.0
 
         # Negative portfolio value
         risk_pct_neg = calculate_risk_percent(
-            position_size=40,
-            entry_price=100,
-            stop_loss_price=98,
-            portfolio_value=-1000
+            position_size=40, entry_price=100, stop_loss_price=98, portfolio_value=-1000
         )
         assert risk_pct_neg == 0.0

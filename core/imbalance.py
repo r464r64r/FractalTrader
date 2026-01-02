@@ -6,15 +6,13 @@ moved so aggressively that it left "gaps" between candles. These gaps
 often get filled as price returns to fair value.
 """
 
-import pandas as pd
-import numpy as np
 from typing import Literal
+
+import pandas as pd
 
 
 def find_fair_value_gaps(
-    high: pd.Series,
-    low: pd.Series,
-    min_gap_percent: float = 0.001  # Minimum 0.1% gap
+    high: pd.Series, low: pd.Series, min_gap_percent: float = 0.001  # Minimum 0.1% gap
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Identify Fair Value Gaps (imbalances).
@@ -58,38 +56,42 @@ def find_fair_value_gaps(
         # Bullish FVG: gap between candle[i-2].high and candle[i].low
         # This means candle[i-1] moved up so fast it left a gap
         gap_low_bull = high_values[i - 2]  # Top of candle 2 bars ago
-        gap_high_bull = low_values[i]       # Bottom of current candle
+        gap_high_bull = low_values[i]  # Bottom of current candle
 
         if gap_high_bull > gap_low_bull:
             # There's a gap (current low > old high)
             gap_size = (gap_high_bull - gap_low_bull) / gap_low_bull
 
             if gap_size >= min_gap_percent:
-                bullish_fvgs.append({
-                    "timestamp": index[i],
-                    "gap_high": gap_high_bull,
-                    "gap_low": gap_low_bull,
-                    "filled": False,
-                    "fill_idx": None
-                })
+                bullish_fvgs.append(
+                    {
+                        "timestamp": index[i],
+                        "gap_high": gap_high_bull,
+                        "gap_low": gap_low_bull,
+                        "filled": False,
+                        "fill_idx": None,
+                    }
+                )
 
         # Bearish FVG: gap between candle[i-2].low and candle[i].high
         # This means candle[i-1] moved down so fast it left a gap
-        gap_high_bear = low_values[i - 2]   # Bottom of candle 2 bars ago
-        gap_low_bear = high_values[i]       # Top of current candle
+        gap_high_bear = low_values[i - 2]  # Bottom of candle 2 bars ago
+        gap_low_bear = high_values[i]  # Top of current candle
 
         if gap_high_bear > gap_low_bear:
             # There's a gap (old low > current high)
             gap_size = (gap_high_bear - gap_low_bear) / gap_low_bear
 
             if gap_size >= min_gap_percent:
-                bearish_fvgs.append({
-                    "timestamp": index[i],
-                    "gap_high": gap_high_bear,
-                    "gap_low": gap_low_bear,
-                    "filled": False,
-                    "fill_idx": None
-                })
+                bearish_fvgs.append(
+                    {
+                        "timestamp": index[i],
+                        "gap_high": gap_high_bear,
+                        "gap_low": gap_low_bear,
+                        "filled": False,
+                        "fill_idx": None,
+                    }
+                )
 
     # Convert to DataFrames
     if bullish_fvgs:
@@ -110,7 +112,7 @@ def check_fvg_fill(
     low: pd.Series,
     fvg_zones: pd.DataFrame,
     fill_type: Literal["full", "partial"] = "partial",
-    partial_percent: float = 0.5
+    partial_percent: float = 0.5,
 ) -> pd.Series:
     """
     Check if price has returned to fill FVG zones.
@@ -176,9 +178,7 @@ def check_fvg_fill(
 
 
 def get_active_fvgs(
-    fvg_zones: pd.DataFrame,
-    current_idx: pd.Timestamp,
-    max_age_bars: int = 50
+    fvg_zones: pd.DataFrame, current_idx: pd.Timestamp, max_age_bars: int = 50
 ) -> pd.DataFrame:
     """
     Get active (unfilled) FVGs within age limit.
@@ -218,16 +218,12 @@ def get_active_fvgs(
             if age <= max_age_bars:
                 valid_fvgs.append(fvg_idx)
 
-        active = active.loc[valid_fvgs] if valid_fvgs else pd.DataFrame(
-            columns=active.columns
-        )
+        active = active.loc[valid_fvgs] if valid_fvgs else pd.DataFrame(columns=active.columns)
 
     return active
 
 
-def calculate_fvg_size(
-    fvg_zones: pd.DataFrame
-) -> pd.Series:
+def calculate_fvg_size(fvg_zones: pd.DataFrame) -> pd.Series:
     """
     Calculate the size of each FVG as percentage.
 

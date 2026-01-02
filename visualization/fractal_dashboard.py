@@ -4,9 +4,8 @@ Interactive multi-timeframe dashboard for Jupyter notebooks.
 Provides synchronized 3-panel charts with SMC pattern overlays and confidence scoring.
 """
 
-from typing import List, Dict, Optional, Tuple
+
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -39,12 +38,7 @@ class FractalDashboard:
         order_blocks: Dict mapping timeframe -> (bullish_ob, bearish_ob) DataFrames
     """
 
-    def __init__(
-        self,
-        pair: str,
-        timeframes: List[str],
-        min_impulse_percent: float = 0.01
-    ):
+    def __init__(self, pair: str, timeframes: list[str], min_impulse_percent: float = 0.01):
         """
         Initialize FractalDashboard.
 
@@ -64,8 +58,8 @@ class FractalDashboard:
         self.min_impulse_percent = min_impulse_percent
 
         # Data storage
-        self.data: Dict[str, pd.DataFrame] = {}
-        self.order_blocks: Dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
+        self.data: dict[str, pd.DataFrame] = {}
+        self.order_blocks: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = {}
 
     def load_data(self, csv_path: str) -> None:
         """
@@ -83,38 +77,33 @@ class FractalDashboard:
         """
         # Load base data
         try:
-            df = pd.read_csv(csv_path, parse_dates=['timestamp'], index_col='timestamp')
+            df = pd.read_csv(csv_path, parse_dates=["timestamp"], index_col="timestamp")
         except FileNotFoundError:
             raise FileNotFoundError(f"Data file not found: {csv_path}")
         except Exception as e:
             raise ValueError(f"Error loading CSV: {e}")
 
         # Validate columns
-        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        required_cols = ["open", "high", "low", "close", "volume"]
         missing = [col for col in required_cols if col not in df.columns]
         if missing:
             raise ValueError(f"CSV missing columns: {missing}")
 
         # Resample to each timeframe
-        timeframe_map = {
-            '15m': '15min',
-            '1h': '1h',
-            '4h': '4h',
-            '1d': '1D'
-        }
+        timeframe_map = {"15m": "15min", "1h": "1h", "4h": "4h", "1d": "1D"}
 
         for tf in self.timeframes:
             if tf not in timeframe_map:
                 raise ValueError(f"Unsupported timeframe: {tf}")
 
             # Resample OHLCV
-            resampled = df.resample(timeframe_map[tf]).agg({
-                'open': 'first',
-                'high': 'max',
-                'low': 'min',
-                'close': 'last',
-                'volume': 'sum'
-            }).dropna()
+            resampled = (
+                df.resample(timeframe_map[tf])
+                .agg(
+                    {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+                )
+                .dropna()
+            )
 
             self.data[tf] = resampled
 
@@ -133,20 +122,17 @@ class FractalDashboard:
 
         for tf, df in self.data.items():
             bullish_ob, bearish_ob = find_order_blocks(
-                open_price=df['open'],
-                high=df['high'],
-                low=df['low'],
-                close=df['close'],
-                min_impulse_percent=self.min_impulse_percent
+                open_price=df["open"],
+                high=df["high"],
+                low=df["low"],
+                close=df["close"],
+                min_impulse_percent=self.min_impulse_percent,
             )
             self.order_blocks[tf] = (bullish_ob, bearish_ob)
 
     def calculate_confidence(
-        self,
-        timeframe: str,
-        ob_index: pd.Timestamp,
-        ob_type: str = 'bullish'
-    ) -> Tuple[int, ConfidenceFactors]:
+        self, timeframe: str, ob_index: pd.Timestamp, ob_type: str = "bullish"
+    ) -> tuple[int, ConfidenceFactors]:
         """
         Calculate confidence score for a specific order block setup.
 
@@ -170,7 +156,7 @@ class FractalDashboard:
 
         # Get order block data
         bullish_ob, bearish_ob = self.order_blocks[timeframe]
-        ob_df = bullish_ob if ob_type == 'bullish' else bearish_ob
+        ob_df = bullish_ob if ob_type == "bullish" else bearish_ob
 
         if ob_index not in ob_df.index:
             raise ValueError(f"Order block at {ob_index} not found")
@@ -188,22 +174,22 @@ class FractalDashboard:
                 htf = self.timeframes[htf_idx]
                 htf_bullish, htf_bearish = self.order_blocks[htf]
                 # Simple check: HTF has same direction OBs
-                if ob_type == 'bullish' and len(htf_bullish) > 0:
+                if ob_type == "bullish" and len(htf_bullish) > 0:
                     factors.htf_trend_aligned = True
-                elif ob_type == 'bearish' and len(htf_bearish) > 0:
+                elif ob_type == "bearish" and len(htf_bearish) > 0:
                     factors.htf_trend_aligned = True
 
         # 2. Pattern clean - check if OB hasn't been heavily retested (invalidated)
-        if not ob_data['invalidated']:
+        if not ob_data["invalidated"]:
             factors.pattern_clean = True
 
         # 3. Multiple confluences - retest count as confluence
-        factors.multiple_confluences = min(int(ob_data['retest_count']), 4)
+        factors.multiple_confluences = min(int(ob_data["retest_count"]), 4)
 
         # 4. Volume spike - check volume at OB formation
         try:
-            ob_volume = df.loc[ob_index, 'volume']
-            avg_volume = df['volume'].rolling(window=20).mean().loc[ob_index]
+            ob_volume = df.loc[ob_index, "volume"]
+            avg_volume = df["volume"].rolling(window=20).mean().loc[ob_index]
             if ob_volume > avg_volume * 1.5:  # 50% above average
                 factors.volume_spike = True
         except (KeyError, ValueError):
@@ -212,20 +198,20 @@ class FractalDashboard:
         # 5. Market regime - check if trending
         # Simple trend check: price above/below 50-period MA
         try:
-            ma50 = df['close'].rolling(window=50).mean()
-            current_price = df['close'].iloc[-1]
+            ma50 = df["close"].rolling(window=50).mean()
+            current_price = df["close"].iloc[-1]
             ma50_value = ma50.iloc[-1]
 
-            if ob_type == 'bullish' and current_price > ma50_value:
+            if ob_type == "bullish" and current_price > ma50_value:
                 factors.trending_market = True
-            elif ob_type == 'bearish' and current_price < ma50_value:
+            elif ob_type == "bearish" and current_price < ma50_value:
                 factors.trending_market = True
         except (KeyError, ValueError):
             pass
 
         # 6. Low volatility - check ATR (simple version using high-low range)
         try:
-            atr = (df['high'] - df['low']).rolling(window=14).mean()
+            atr = (df["high"] - df["low"]).rolling(window=14).mean()
             recent_atr = atr.iloc[-14:].mean()
             historical_atr = atr.mean()
 
@@ -242,7 +228,7 @@ class FractalDashboard:
         height: int = 800,
         show_invalidated: bool = False,
         max_order_blocks: int = 50,
-        show_confidence_for: Optional[Tuple[str, pd.Timestamp, str]] = None
+        show_confidence_for: tuple[str, pd.Timestamp, str] | None = None,
     ) -> go.Figure:
         """
         Create synchronized multi-timeframe chart with SMC overlays.
@@ -271,7 +257,7 @@ class FractalDashboard:
             shared_xaxes=True,
             vertical_spacing=0.02,
             subplot_titles=[f"{tf.upper()} (FractalTrader)" for tf in self.timeframes],
-            row_heights=self._calculate_row_heights()
+            row_heights=self._calculate_row_heights(),
         )
 
         # Add candlesticks and order blocks for each timeframe
@@ -283,15 +269,15 @@ class FractalDashboard:
             fig.add_trace(
                 go.Candlestick(
                     x=df.index,
-                    open=df['open'],
-                    high=df['high'],
-                    low=df['low'],
-                    close=df['close'],
+                    open=df["open"],
+                    high=df["high"],
+                    low=df["low"],
+                    close=df["close"],
                     name=tf.upper(),
-                    showlegend=False
+                    showlegend=False,
                 ),
                 row=i,
-                col=1
+                col=1,
             )
 
             # Add order block overlays
@@ -303,7 +289,7 @@ class FractalDashboard:
                 border_color="green",
                 ob_type="bullish",
                 show_invalidated=show_invalidated,
-                max_blocks=max_order_blocks
+                max_blocks=max_order_blocks,
             )
 
             self._add_order_blocks(
@@ -314,7 +300,7 @@ class FractalDashboard:
                 border_color="red",
                 ob_type="bearish",
                 show_invalidated=show_invalidated,
-                max_blocks=max_order_blocks
+                max_blocks=max_order_blocks,
             )
 
         # Update layout
@@ -323,7 +309,7 @@ class FractalDashboard:
             title=f"{self.pair} - Multi-Timeframe Analysis",
             showlegend=False,
             xaxis_rangeslider_visible=False,
-            hovermode='x unified'
+            hovermode="x unified",
         )
 
         # Hide rangeslider on bottom subplot
@@ -340,7 +326,7 @@ class FractalDashboard:
         height: int = 800,
         show_invalidated: bool = False,
         max_order_blocks: int = 50,
-        show_confidence_for: Optional[Tuple[str, pd.Timestamp, str]] = None
+        show_confidence_for: tuple[str, pd.Timestamp, str] | None = None,
     ) -> None:
         """
         Render and display dashboard in Jupyter notebook.
@@ -355,11 +341,11 @@ class FractalDashboard:
             height=height,
             show_invalidated=show_invalidated,
             max_order_blocks=max_order_blocks,
-            show_confidence_for=show_confidence_for
+            show_confidence_for=show_confidence_for,
         )
         fig.show()
 
-    def _calculate_row_heights(self) -> List[float]:
+    def _calculate_row_heights(self) -> list[float]:
         """
         Calculate optimal row heights for subplots.
 
@@ -377,11 +363,7 @@ class FractalDashboard:
             return [0.4, 0.3, 0.3]  # Top panel gets most space
 
     def _add_confidence_panel(
-        self,
-        fig: go.Figure,
-        timeframe: str,
-        ob_index: pd.Timestamp,
-        ob_type: str = 'bullish'
+        self, fig: go.Figure, timeframe: str, ob_index: pd.Timestamp, ob_type: str = "bullish"
     ) -> None:
         """
         Add confidence breakdown panel as annotation.
@@ -404,7 +386,7 @@ class FractalDashboard:
             f"<b>Setup: {ob_type.upper()} OB Retest</b>",
             f"<b>Confidence: {score}/100 {signal}</b>",
             "",
-            "<b>Breakdown:</b>"
+            "<b>Breakdown:</b>",
         ]
 
         # Add factor breakdown
@@ -424,7 +406,9 @@ class FractalDashboard:
             breakdown_lines.append("  Pattern clean:   0 ✗")
 
         confluence_points = min(factors.multiple_confluences * 5, 20)
-        breakdown_lines.append(f"  Confluences:    +{confluence_points} ({factors.multiple_confluences}x)")
+        breakdown_lines.append(
+            f"  Confluences:    +{confluence_points} ({factors.multiple_confluences}x)"
+        )
 
         if factors.volume_spike:
             breakdown_lines.append("  Volume spike:   +10 ✓")
@@ -462,12 +446,8 @@ class FractalDashboard:
             bordercolor=signal_color,
             borderwidth=2,
             borderpad=10,
-            font=dict(
-                family="Courier New, monospace",
-                size=11,
-                color="white"
-            ),
-            align="left"
+            font=dict(family="Courier New, monospace", size=11, color="white"),
+            align="left",
         )
 
     def _add_order_blocks(
@@ -479,7 +459,7 @@ class FractalDashboard:
         border_color: str,
         ob_type: str,
         show_invalidated: bool,
-        max_blocks: int
+        max_blocks: int,
     ) -> None:
         """
         Add order block shapes to a subplot.
@@ -496,14 +476,14 @@ class FractalDashboard:
         """
         # Filter blocks
         if not show_invalidated:
-            blocks = order_blocks[~order_blocks['invalidated']]
+            blocks = order_blocks[~order_blocks["invalidated"]]
         else:
             blocks = order_blocks
 
         # Limit number of blocks (performance)
         if len(blocks) > max_blocks:
             # Sort by retest_count (most tested = most important)
-            blocks = blocks.nlargest(max_blocks, 'retest_count')
+            blocks = blocks.nlargest(max_blocks, "retest_count")
 
         # Add each block as a shape
         for idx, row_data in blocks.iterrows():
@@ -516,24 +496,24 @@ class FractalDashboard:
                 type="rect",
                 x0=x0,
                 x1=x1,
-                y0=row_data['ob_low'],
-                y1=row_data['ob_high'],
+                y0=row_data["ob_low"],
+                y1=row_data["ob_high"],
                 fillcolor=color,
                 line=dict(color=border_color, width=1),
-                opacity=0.8 if not row_data['invalidated'] else 0.3,
+                opacity=0.8 if not row_data["invalidated"] else 0.3,
                 row=row,
-                col=1
+                col=1,
             )
 
             # Add label annotation
             fig.add_annotation(
                 x=x0,
-                y=row_data['ob_high'] if ob_type == "bullish" else row_data['ob_low'],
+                y=row_data["ob_high"] if ob_type == "bullish" else row_data["ob_low"],
                 text=f"OB ({row_data['retest_count']} retests)",
                 showarrow=False,
                 font=dict(size=8, color=border_color),
                 xanchor="left",
                 yanchor="bottom" if ob_type == "bullish" else "top",
                 row=row,
-                col=1
+                col=1,
             )

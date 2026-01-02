@@ -1,15 +1,16 @@
 """Tests for live data streaming."""
 
-import pytest
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import time
-import sys
 import os
+import sys
+import time
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+import pytest
 
 # Add parent directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from notebooks.live_data_stream import LiveDataStream, LiveIndicatorStream
 
@@ -25,21 +26,20 @@ class MockFetcher:
         self.fetch_count += 1
 
         # Generate realistic data
-        dates = pd.date_range(
-            end=datetime.now(),
-            periods=limit,
-            freq='15min'
-        )
+        dates = pd.date_range(end=datetime.now(), periods=limit, freq="15min")
 
         np.random.seed(self.fetch_count)  # Different data each time
 
-        df = pd.DataFrame({
-            'open': 50000 + np.random.randn(limit) * 100,
-            'high': 50100 + np.random.randn(limit) * 100,
-            'low': 49900 + np.random.randn(limit) * 100,
-            'close': 50000 + np.random.randn(limit) * 100,
-            'volume': np.random.randint(100, 1000, limit)
-        }, index=pd.DatetimeIndex(dates, name='timestamp'))
+        df = pd.DataFrame(
+            {
+                "open": 50000 + np.random.randn(limit) * 100,
+                "high": 50100 + np.random.randn(limit) * 100,
+                "low": 49900 + np.random.randn(limit) * 100,
+                "close": 50000 + np.random.randn(limit) * 100,
+                "volume": np.random.randint(100, 1000, limit),
+            },
+            index=pd.DatetimeIndex(dates, name="timestamp"),
+        )
 
         return df
 
@@ -48,11 +48,11 @@ class MockFetcher:
 def mock_stream():
     """Create mock stream for testing."""
     stream = LiveDataStream(
-        symbol='BTC',
-        timeframes=['15m', '1h'],
+        symbol="BTC",
+        timeframes=["15m", "1h"],
         update_interval=1,  # Fast updates for testing
-        source='hyperliquid',
-        lookback=100
+        source="hyperliquid",
+        lookback=100,
     )
 
     # Replace with mock fetcher
@@ -66,8 +66,8 @@ class TestLiveDataStream:
 
     def test_initialization(self, mock_stream):
         """Test stream initialization."""
-        assert mock_stream.symbol == 'BTC'
-        assert mock_stream.timeframes == ['15m', '1h']
+        assert mock_stream.symbol == "BTC"
+        assert mock_stream.timeframes == ["15m", "1h"]
         assert mock_stream.update_interval >= 1
         assert mock_stream.lookback == 100
 
@@ -76,14 +76,14 @@ class TestLiveDataStream:
         mock_stream._fetch_all_timeframes()
 
         # Check data loaded for all timeframes
-        assert '15m' in mock_stream.data
-        assert '1h' in mock_stream.data
+        assert "15m" in mock_stream.data
+        assert "1h" in mock_stream.data
 
         # Check data format
         for tf, df in mock_stream.data.items():
             assert isinstance(df, pd.DataFrame)
             assert len(df) > 0
-            assert all(col in df.columns for col in ['open', 'high', 'low', 'close', 'volume'])
+            assert all(col in df.columns for col in ["open", "high", "low", "close", "volume"])
 
     def test_get_latest_price(self, mock_stream):
         """Test getting latest price."""
@@ -97,10 +97,10 @@ class TestLiveDataStream:
 
     def test_callback_registration(self, mock_stream):
         """Test callback registration."""
-        callback_called = {'count': 0}
+        callback_called = {"count": 0}
 
         def test_callback(data):
-            callback_called['count'] += 1
+            callback_called["count"] += 1
 
         mock_stream.on_update(test_callback)
 
@@ -110,7 +110,7 @@ class TestLiveDataStream:
         mock_stream._fetch_all_timeframes()
         mock_stream._notify_callbacks()
 
-        assert callback_called['count'] == 1
+        assert callback_called["count"] == 1
 
     def test_start_stop_stream(self, mock_stream):
         """Test starting and stopping stream."""
@@ -147,6 +147,7 @@ class TestLiveDataStream:
 
     def test_error_handling(self, mock_stream):
         """Test error handling during fetch."""
+
         # Make fetcher raise error
         def failing_fetch(*args, **kwargs):
             raise ConnectionError("Mock network error")
@@ -166,6 +167,7 @@ class TestLiveDataStream:
 
     def test_callback_error_handling(self, mock_stream):
         """Test that callback errors don't crash stream."""
+
         def bad_callback(data):
             raise ValueError("Bad callback")
 
@@ -182,11 +184,7 @@ class TestLiveIndicatorStream:
     def test_indicator_calculation(self):
         """Test automatic indicator calculation."""
         stream = LiveIndicatorStream(
-            symbol='BTC',
-            timeframes=['1h'],
-            update_interval=1,
-            source='hyperliquid',
-            lookback=100
+            symbol="BTC", timeframes=["1h"], update_interval=1, source="hyperliquid", lookback=100
         )
 
         # Replace with mock fetcher
@@ -197,14 +195,14 @@ class TestLiveIndicatorStream:
 
         # If detection modules are available, indicators should be calculated
         if stream.detect_order_blocks is not None:
-            assert '1h' in stream.order_blocks
-            assert '1h' in stream.liquidity_zones
-            assert '1h' in stream.market_structure
+            assert "1h" in stream.order_blocks
+            assert "1h" in stream.liquidity_zones
+            assert "1h" in stream.market_structure
 
             # Check formats
-            assert isinstance(stream.order_blocks['1h'], pd.DataFrame)
-            assert isinstance(stream.liquidity_zones['1h'], pd.DataFrame)
-            assert isinstance(stream.market_structure['1h'], dict)
+            assert isinstance(stream.order_blocks["1h"], pd.DataFrame)
+            assert isinstance(stream.liquidity_zones["1h"], pd.DataFrame)
+            assert isinstance(stream.market_structure["1h"], dict)
         else:
             # Detection modules not available - skip indicator checks
             assert stream.order_blocks == {}
@@ -214,21 +212,17 @@ class TestLiveIndicatorStream:
     def test_get_indicators(self):
         """Test getting indicators for timeframe."""
         stream = LiveIndicatorStream(
-            symbol='BTC',
-            timeframes=['1h'],
-            update_interval=1,
-            source='hyperliquid',
-            lookback=100
+            symbol="BTC", timeframes=["1h"], update_interval=1, source="hyperliquid", lookback=100
         )
 
         stream.fetcher = MockFetcher()
         stream._fetch_all_timeframes()
 
-        indicators = stream.get_indicators('1h')
+        indicators = stream.get_indicators("1h")
 
-        assert 'order_blocks' in indicators
-        assert 'liquidity_zones' in indicators
-        assert 'market_structure' in indicators
+        assert "order_blocks" in indicators
+        assert "liquidity_zones" in indicators
+        assert "market_structure" in indicators
 
 
 @pytest.mark.integration
@@ -238,19 +232,15 @@ class TestLiveStreamIntegration:
     def test_hyperliquid_stream(self):
         """Test stream with real Hyperliquid fetcher."""
         stream = LiveDataStream(
-            symbol='BTC',
-            timeframes=['1h'],
-            update_interval=5,
-            source='hyperliquid',
-            lookback=50
+            symbol="BTC", timeframes=["1h"], update_interval=5, source="hyperliquid", lookback=50
         )
 
         # Fetch initial data
         stream._fetch_all_timeframes()
 
         # Check data loaded
-        assert '1h' in stream.data
-        assert not stream.data['1h'].empty
+        assert "1h" in stream.data
+        assert not stream.data["1h"].empty
 
         # Check price
         price = stream.get_latest_price()
@@ -258,5 +248,5 @@ class TestLiveStreamIntegration:
         assert 10000 < price < 200000  # Reasonable BTC range
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

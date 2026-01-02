@@ -6,14 +6,12 @@ conservative strategy - trades with confirmed trend on pullbacks to
 institutional accumulation/distribution zones.
 """
 
-from typing import Optional
-import pandas as pd
-import numpy as np
 
+import pandas as pd
+
+from core.market_structure import detect_structure_breaks, determine_trend, find_swing_points
+from core.order_blocks import find_order_blocks
 from strategies.base import BaseStrategy, Signal
-from core.market_structure import find_swing_points, detect_structure_breaks, determine_trend
-from core.order_blocks import find_order_blocks, check_ob_retest, get_valid_order_blocks
-from risk.confidence import ConfidenceFactors
 
 
 class BOSOrderBlockStrategy(BaseStrategy):
@@ -38,9 +36,9 @@ class BOSOrderBlockStrategy(BaseStrategy):
     DEFAULT_PARAMS = {
         "swing_period": 5,
         "min_impulse_percent": 0.01,  # 1% minimum impulse for OB
-        "ob_validity_bars": 30,        # OB valid for 30 bars
-        "min_rr_ratio": 2.0,           # Higher RR for trend following
-        "atr_period": 14,              # For volatility
+        "ob_validity_bars": 30,  # OB valid for 30 bars
+        "min_rr_ratio": 2.0,  # Higher RR for trend following
+        "atr_period": 14,  # For volatility
     }
 
     def __init__(self, params: dict | None = None):
@@ -63,16 +61,12 @@ class BOSOrderBlockStrategy(BaseStrategy):
 
         # 1. Find market structure
         swing_highs, swing_lows = find_swing_points(
-            data["high"],
-            data["low"],
-            n=self.params["swing_period"]
+            data["high"], data["low"], n=self.params["swing_period"]
         )
 
         # 2. Detect BOS events
         bos_bullish, bos_bearish, choch = detect_structure_breaks(
-            data["close"],
-            swing_highs,
-            swing_lows
+            data["close"], swing_highs, swing_lows
         )
 
         # 3. Find order blocks
@@ -81,7 +75,7 @@ class BOSOrderBlockStrategy(BaseStrategy):
             data["high"],
             data["low"],
             data["close"],
-            min_impulse_percent=self.params["min_impulse_percent"]
+            min_impulse_percent=self.params["min_impulse_percent"],
         )
 
         # 4. Track BOS + OB setups
@@ -120,11 +114,8 @@ class BOSOrderBlockStrategy(BaseStrategy):
         return signals
 
     def _find_recent_ob(
-        self,
-        order_blocks: pd.DataFrame,
-        bos_idx: pd.Timestamp,
-        lookback: int = 10
-    ) -> Optional[dict]:
+        self, order_blocks: pd.DataFrame, bos_idx: pd.Timestamp, lookback: int = 10
+    ) -> dict | None:
         """
         Find the most recent order block before a BOS event.
 
@@ -157,7 +148,7 @@ class BOSOrderBlockStrategy(BaseStrategy):
             "timestamp": ob_idx,
             "ob_high": ob["ob_high"],
             "ob_low": ob["ob_low"],
-            "invalidated": ob["invalidated"]
+            "invalidated": ob["invalidated"],
         }
 
     def _wait_for_retest(
@@ -167,8 +158,8 @@ class BOSOrderBlockStrategy(BaseStrategy):
         ob: dict,
         ob_dataframe: pd.DataFrame,
         swing_levels: pd.Series,
-        direction: str
-    ) -> Optional[Signal]:
+        direction: str,
+    ) -> Signal | None:
         """
         Wait for price to retest the OB after BOS, generate signal.
 
@@ -199,25 +190,17 @@ class BOSOrderBlockStrategy(BaseStrategy):
             if current_low <= ob_high and current_high >= ob_low:
                 # Retest detected!
                 if direction == "long":
-                    signal = self._create_long_signal(
-                        data, idx, ob, swing_levels
-                    )
+                    signal = self._create_long_signal(data, idx, ob, swing_levels)
                 else:
-                    signal = self._create_short_signal(
-                        data, idx, ob, swing_levels
-                    )
+                    signal = self._create_short_signal(data, idx, ob, swing_levels)
 
                 return signal
 
         return None
 
     def _create_long_signal(
-        self,
-        data: pd.DataFrame,
-        idx: pd.Timestamp,
-        ob: dict,
-        swing_highs: pd.Series
-    ) -> Optional[Signal]:
+        self, data: pd.DataFrame, idx: pd.Timestamp, ob: dict, swing_highs: pd.Series
+    ) -> Signal | None:
         """
         Create a long signal on bullish OB retest.
 
@@ -271,19 +254,15 @@ class BOSOrderBlockStrategy(BaseStrategy):
                 metadata={
                     "ob_high": ob["ob_high"],
                     "ob_low": ob["ob_low"],
-                    "signal_type": "bullish_ob_retest"
-                }
+                    "signal_type": "bullish_ob_retest",
+                },
             )
         except Exception:
             return None
 
     def _create_short_signal(
-        self,
-        data: pd.DataFrame,
-        idx: pd.Timestamp,
-        ob: dict,
-        swing_lows: pd.Series
-    ) -> Optional[Signal]:
+        self, data: pd.DataFrame, idx: pd.Timestamp, ob: dict, swing_lows: pd.Series
+    ) -> Signal | None:
         """
         Create a short signal on bearish OB retest.
 
@@ -337,8 +316,8 @@ class BOSOrderBlockStrategy(BaseStrategy):
                 metadata={
                     "ob_high": ob["ob_high"],
                     "ob_low": ob["ob_low"],
-                    "signal_type": "bearish_ob_retest"
-                }
+                    "signal_type": "bearish_ob_retest",
+                },
             )
         except Exception:
             return None
@@ -365,7 +344,7 @@ class BOSOrderBlockStrategy(BaseStrategy):
         try:
             # Get recent data for analysis
             lookback = min(50, signal_idx)
-            recent_data = data.iloc[max(0, signal_idx - lookback):signal_idx + 1]
+            recent_data = data.iloc[max(0, signal_idx - lookback) : signal_idx + 1]
 
             if len(recent_data) < 10:
                 return 50  # Default confidence for insufficient data
@@ -376,9 +355,7 @@ class BOSOrderBlockStrategy(BaseStrategy):
 
             # 2. Trend consistency (0-20 points)
             swing_h, swing_l = find_swing_points(
-                recent_data["high"],
-                recent_data["low"],
-                n=min(5, len(recent_data) // 4)
+                recent_data["high"], recent_data["low"], n=min(5, len(recent_data) // 4)
             )
             trend = determine_trend(swing_h, swing_l)
 

@@ -8,16 +8,15 @@ import subprocess
 from typing import Any
 
 from fractal_mcp.config import (
-    DEFAULT_BACKTEST_BARS,
     AVAILABLE_STRATEGIES,
+    DEFAULT_BACKTEST_BARS,
+    DOCKER_CONTAINER_NAME,
     USE_DOCKER,
-    DOCKER_CONTAINER_NAME
 )
 
 
 def run_backtest(
-    strategy: str = "liquidity_sweep",
-    bars: int = DEFAULT_BACKTEST_BARS
+    strategy: str = "liquidity_sweep", bars: int = DEFAULT_BACKTEST_BARS
 ) -> dict[str, Any]:
     """
     Run backtest for a given strategy.
@@ -41,14 +40,14 @@ def run_backtest(
             "sharpe_ratio": 0.0,
             "max_drawdown": 0.0,
             "total_trades": 0,
-            "error": f"Invalid strategy. Choose from: {', '.join(AVAILABLE_STRATEGIES)}"
+            "error": f"Invalid strategy. Choose from: {', '.join(AVAILABLE_STRATEGIES)}",
         }
 
     # Map strategy name to class name
     strategy_map = {
         "liquidity_sweep": "LiquiditySweepStrategy",
         "fvg_fill": "FVGFillStrategy",
-        "bos_orderblock": "BOSOrderBlockStrategy"
+        "bos_orderblock": "BOSOrderBlockStrategy",
     }
 
     strategy_class = strategy_map[strategy]
@@ -108,19 +107,11 @@ except Exception as e:
 
     try:
         if USE_DOCKER:
-            cmd = [
-                "docker", "exec", DOCKER_CONTAINER_NAME,
-                "python", "-c", backtest_code
-            ]
+            cmd = ["docker", "exec", DOCKER_CONTAINER_NAME, "python", "-c", backtest_code]
         else:
             cmd = ["python", "-c", backtest_code]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=180
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
 
         output = result.stdout + result.stderr
 
@@ -128,6 +119,7 @@ except Exception as e:
         if "__MCP_RESULT__" in output:
             json_str = output.split("__MCP_RESULT__")[1].strip()
             import json
+
             return json.loads(json_str)
         else:
             return {
@@ -135,7 +127,7 @@ except Exception as e:
                 "sharpe_ratio": 0.0,
                 "max_drawdown": 0.0,
                 "total_trades": 0,
-                "error": f"Failed to parse backtest output:\n{output}"
+                "error": f"Failed to parse backtest output:\n{output}",
             }
 
     except subprocess.TimeoutExpired:
@@ -144,7 +136,7 @@ except Exception as e:
             "sharpe_ratio": 0.0,
             "max_drawdown": 0.0,
             "total_trades": 0,
-            "error": "Backtest execution timed out after 180 seconds"
+            "error": "Backtest execution timed out after 180 seconds",
         }
     except Exception as e:
         return {
@@ -152,7 +144,7 @@ except Exception as e:
             "sharpe_ratio": 0.0,
             "max_drawdown": 0.0,
             "total_trades": 0,
-            "error": f"Error running backtest: {str(e)}"
+            "error": f"Error running backtest: {str(e)}",
         }
 
 

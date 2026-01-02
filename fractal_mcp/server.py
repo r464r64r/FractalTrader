@@ -11,17 +11,16 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent, Tool
 
-from fractal_mcp.config import SERVER_NAME, SERVER_VERSION, AVAILABLE_STRATEGIES
-from fractal_mcp.tools.test_runner import run_tests
+from fractal_mcp.config import AVAILABLE_STRATEGIES, SERVER_NAME, SERVER_VERSION
 from fractal_mcp.tools.backtest import run_backtest
 from fractal_mcp.tools.signals import generate_signals
+from fractal_mcp.tools.test_runner import run_tests
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -51,10 +50,10 @@ async def list_tools() -> list[Tool]:
                     "test_path": {
                         "type": "string",
                         "description": "Path to tests (default: 'tests/')",
-                        "default": "tests/"
+                        "default": "tests/",
                     }
-                }
-            }
+                },
+            },
         ),
         Tool(
             name="run_backtest",
@@ -70,17 +69,17 @@ async def list_tools() -> list[Tool]:
                         "type": "string",
                         "description": f"Strategy name: {', '.join(AVAILABLE_STRATEGIES)}",
                         "enum": AVAILABLE_STRATEGIES,
-                        "default": "liquidity_sweep"
+                        "default": "liquidity_sweep",
                     },
                     "bars": {
                         "type": "integer",
                         "description": "Number of bars for synthetic data (default: 500)",
                         "default": 500,
                         "minimum": 100,
-                        "maximum": 10000
-                    }
-                }
-            }
+                        "maximum": 10000,
+                    },
+                },
+            },
         ),
         Tool(
             name="generate_signals",
@@ -96,18 +95,18 @@ async def list_tools() -> list[Tool]:
                         "type": "string",
                         "description": f"Strategy name: {', '.join(AVAILABLE_STRATEGIES)}",
                         "enum": AVAILABLE_STRATEGIES,
-                        "default": "liquidity_sweep"
+                        "default": "liquidity_sweep",
                     },
                     "bars": {
                         "type": "integer",
                         "description": "Number of bars for synthetic data (default: 500)",
                         "default": 500,
                         "minimum": 100,
-                        "maximum": 10000
-                    }
-                }
-            }
-        )
+                        "maximum": 10000,
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -149,17 +148,16 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
 
         # Format result as JSON string
         import json
+
         result_text = json.dumps(result, indent=2)
 
         return [TextContent(type="text", text=result_text)]
 
     except Exception as e:
         logger.error(f"Error executing tool {name}: {e}")
-        error_result = {
-            "error": str(e),
-            "tool": name
-        }
+        error_result = {"error": str(e), "tool": name}
         import json
+
         return [TextContent(type="text", text=json.dumps(error_result, indent=2))]
 
 
@@ -172,11 +170,7 @@ async def main() -> None:
     logger.info(f"Starting {SERVER_NAME} MCP server v{SERVER_VERSION}")
 
     async with stdio_server() as (read_stream, write_stream):
-        await app.run(
-            read_stream,
-            write_stream,
-            app.create_initialization_options()
-        )
+        await app.run(read_stream, write_stream, app.create_initialization_options())
 
 
 if __name__ == "__main__":

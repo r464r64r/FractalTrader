@@ -1,13 +1,11 @@
 """Real-time setup detection pipeline for live trading."""
 
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Tuple
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+import pandas as pd
 
 from strategies.liquidity_sweep import LiquiditySweepStrategy
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +33,8 @@ class SetupDetector:
     def __init__(
         self,
         min_confidence: float = 70,
-        primary_timeframe: str = '1h',
-        higher_timeframes: List[str] = ['4h']
+        primary_timeframe: str = "1h",
+        higher_timeframes: list[str] = ["4h"],
     ):
         """
         Initialize setup detector.
@@ -59,10 +57,8 @@ class SetupDetector:
         )
 
     def scan_for_setups(
-        self,
-        data: Dict[str, pd.DataFrame],
-        current_price: Optional[float] = None
-    ) -> List[Dict]:
+        self, data: dict[str, pd.DataFrame], current_price: float | None = None
+    ) -> list[dict]:
         """
         Scan market data for trading setups.
 
@@ -87,7 +83,7 @@ class SetupDetector:
 
         # Get current price
         if current_price is None:
-            current_price = float(primary_df['close'].iloc[-1])
+            current_price = float(primary_df["close"].iloc[-1])
 
         # Detect liquidity sweep setups
         liq_setups = self._detect_liquidity_sweeps(data, current_price)
@@ -98,20 +94,18 @@ class SetupDetector:
         setups.extend(ob_setups)
 
         # Filter by confidence
-        setups = [s for s in setups if s['confidence'] >= self.min_confidence]
+        setups = [s for s in setups if s["confidence"] >= self.min_confidence]
 
         # Sort by confidence
-        setups.sort(key=lambda x: x['confidence'], reverse=True)
+        setups.sort(key=lambda x: x["confidence"], reverse=True)
 
         logger.debug(f"Detected {len(setups)} setups (min conf: {self.min_confidence}%)")
 
         return setups
 
     def _detect_liquidity_sweeps(
-        self,
-        data: Dict[str, pd.DataFrame],
-        current_price: float
-    ) -> List[Dict]:
+        self, data: dict[str, pd.DataFrame], current_price: float
+    ) -> list[dict]:
         """
         Detect liquidity sweep setups.
 
@@ -130,38 +124,33 @@ class SetupDetector:
         try:
             signals = self.strategy.generate_signals(primary_df)
 
-            if signals.empty or 'signal' not in signals.columns:
+            if signals.empty or "signal" not in signals.columns:
                 return setups
 
             # Check for new signals in last few candles
             recent_signals = signals.tail(5)
-            active_signals = recent_signals[recent_signals['signal'] != 0]
+            active_signals = recent_signals[recent_signals["signal"] != 0]
 
             for idx, row in active_signals.iterrows():
-                signal_type = "LONG" if row['signal'] > 0 else "SHORT"
+                signal_type = "LONG" if row["signal"] > 0 else "SHORT"
 
                 # Calculate confidence
                 confidence = self._calculate_setup_confidence(
-                    data=data,
-                    signal_type=signal_type,
-                    entry_price=current_price
+                    data=data, signal_type=signal_type, entry_price=current_price
                 )
 
                 # Get HTF bias
                 htf_bias = self._get_htf_bias(data)
 
                 setup = {
-                    'type': f"Liquidity Sweep {signal_type}",
-                    'timeframe': self.primary_timeframe,
-                    'confidence': confidence,
-                    'entry_price': current_price,
-                    'direction': signal_type,
-                    'timestamp': datetime.now(timezone.utc),
-                    'htf_bias': htf_bias,
-                    'metadata': {
-                        'signal_time': idx,
-                        'signal_value': row['signal']
-                    }
+                    "type": f"Liquidity Sweep {signal_type}",
+                    "timeframe": self.primary_timeframe,
+                    "confidence": confidence,
+                    "entry_price": current_price,
+                    "direction": signal_type,
+                    "timestamp": datetime.now(UTC),
+                    "htf_bias": htf_bias,
+                    "metadata": {"signal_time": idx, "signal_value": row["signal"]},
                 }
 
                 setups.append(setup)
@@ -172,10 +161,8 @@ class SetupDetector:
         return setups
 
     def _detect_order_block_bounces(
-        self,
-        data: Dict[str, pd.DataFrame],
-        current_price: float
-    ) -> List[Dict]:
+        self, data: dict[str, pd.DataFrame], current_price: float
+    ) -> list[dict]:
         """
         Detect order block bounce setups.
 
@@ -204,7 +191,7 @@ class SetupDetector:
             tolerance = 0.02  # 2% price tolerance
 
             for idx, ob in ob_df.iterrows():
-                ob_price = (ob['top'] + ob['bottom']) / 2
+                ob_price = (ob["top"] + ob["bottom"]) / 2
                 price_diff = abs(current_price - ob_price) / ob_price
 
                 # Check if price near order block
@@ -212,13 +199,11 @@ class SetupDetector:
                     continue
 
                 # Determine direction
-                signal_type = "LONG" if ob['type'] == 'bullish' else "SHORT"
+                signal_type = "LONG" if ob["type"] == "bullish" else "SHORT"
 
                 # Calculate confidence
                 confidence = self._calculate_setup_confidence(
-                    data=data,
-                    signal_type=signal_type,
-                    entry_price=current_price
+                    data=data, signal_type=signal_type, entry_price=current_price
                 )
 
                 # Boost confidence if aligned with HTF
@@ -229,18 +214,18 @@ class SetupDetector:
                 confidence = min(100, confidence)  # Cap at 100
 
                 setup = {
-                    'type': f"Order Block {signal_type}",
-                    'timeframe': self.primary_timeframe,
-                    'confidence': confidence,
-                    'entry_price': current_price,
-                    'direction': signal_type,
-                    'timestamp': datetime.now(timezone.utc),
-                    'htf_bias': htf_bias,
-                    'metadata': {
-                        'ob_top': ob['top'],
-                        'ob_bottom': ob['bottom'],
-                        'ob_strength': ob.get('strength', 0)
-                    }
+                    "type": f"Order Block {signal_type}",
+                    "timeframe": self.primary_timeframe,
+                    "confidence": confidence,
+                    "entry_price": current_price,
+                    "direction": signal_type,
+                    "timestamp": datetime.now(UTC),
+                    "htf_bias": htf_bias,
+                    "metadata": {
+                        "ob_top": ob["top"],
+                        "ob_bottom": ob["bottom"],
+                        "ob_strength": ob.get("strength", 0),
+                    },
                 }
 
                 setups.append(setup)
@@ -251,10 +236,7 @@ class SetupDetector:
         return setups
 
     def _calculate_setup_confidence(
-        self,
-        data: Dict[str, pd.DataFrame],
-        signal_type: str,
-        entry_price: float
+        self, data: dict[str, pd.DataFrame], signal_type: str, entry_price: float
     ) -> float:
         """
         Calculate confidence score for a setup.
@@ -274,10 +256,7 @@ class SetupDetector:
             # Find most recent signal
             last_idx = len(primary_df) - 1
 
-            confidence = self.strategy.calculate_confidence(
-                data=primary_df,
-                signal_idx=last_idx
-            )
+            confidence = self.strategy.calculate_confidence(data=primary_df, signal_idx=last_idx)
 
             # Add HTF alignment bonus
             htf_bias = self._get_htf_bias(data)
@@ -294,7 +273,7 @@ class SetupDetector:
             logger.error(f"Error calculating confidence: {e}")
             return 70  # Default moderate confidence
 
-    def _get_htf_bias(self, data: Dict[str, pd.DataFrame]) -> Optional[str]:
+    def _get_htf_bias(self, data: dict[str, pd.DataFrame]) -> str | None:
         """
         Get higher timeframe bias.
 
@@ -317,9 +296,9 @@ class SetupDetector:
 
             structure = detect_market_structure(data[htf])
 
-            if structure.get('trend') == 'bullish':
+            if structure.get("trend") == "bullish":
                 return "LONG"
-            elif structure.get('trend') == 'bearish':
+            elif structure.get("trend") == "bearish":
                 return "SHORT"
 
         except Exception as e:
@@ -337,13 +316,13 @@ class SetupDetector:
         Returns:
             True if volume confirms
         """
-        if 'volume' not in df.columns or df.empty:
+        if "volume" not in df.columns or df.empty:
             return False
 
         try:
             # Check if recent volume above average
-            recent_vol = df['volume'].iloc[-1]
-            avg_vol = df['volume'].tail(20).mean()
+            recent_vol = df["volume"].iloc[-1]
+            avg_vol = df["volume"].tail(20).mean()
 
             return recent_vol > avg_vol * 1.2  # 20% above average
 
@@ -358,12 +337,7 @@ class LiveSetupMonitor:
     Integrates SetupDetector with AlertSystem for real-time notifications.
     """
 
-    def __init__(
-        self,
-        detector: SetupDetector,
-        alert_system,
-        journal
-    ):
+    def __init__(self, detector: SetupDetector, alert_system, journal):
         """
         Initialize live setup monitor.
 
@@ -382,10 +356,7 @@ class LiveSetupMonitor:
         logger.info("LiveSetupMonitor initialized")
 
     def check_for_setups(
-        self,
-        data: Dict[str, pd.DataFrame],
-        symbol: str,
-        current_price: Optional[float] = None
+        self, data: dict[str, pd.DataFrame], symbol: str, current_price: float | None = None
     ):
         """
         Check for new setups and trigger alerts.
@@ -400,9 +371,9 @@ class LiveSetupMonitor:
         for setup in setups:
             # Create unique ID for this setup
             setup_id = (
-                setup['type'],
-                setup['timeframe'],
-                int(setup['entry_price'])  # Round to avoid float issues
+                setup["type"],
+                setup["timeframe"],
+                int(setup["entry_price"]),  # Round to avoid float issues
             )
 
             # Skip if already seen
@@ -413,22 +384,22 @@ class LiveSetupMonitor:
 
             # Trigger alert
             self.alerts.setup_detected(
-                title=setup['type'],
+                title=setup["type"],
                 message=self._format_setup_message(setup, symbol),
-                confidence=setup['confidence'],
-                timeframe=setup['timeframe'],
-                metadata=setup.get('metadata', {})
+                confidence=setup["confidence"],
+                timeframe=setup["timeframe"],
+                metadata=setup.get("metadata", {}),
             )
 
             # Log to journal
             self.journal.log_setup(
-                timestamp=setup['timestamp'],
+                timestamp=setup["timestamp"],
                 symbol=symbol,
-                timeframe=setup['timeframe'],
-                setup_type=setup['type'],
-                confidence=setup['confidence'],
-                price=setup['entry_price'],
-                metadata=setup.get('metadata', {})
+                timeframe=setup["timeframe"],
+                setup_type=setup["type"],
+                confidence=setup["confidence"],
+                price=setup["entry_price"],
+                metadata=setup.get("metadata", {}),
             )
 
             logger.info(f"New setup detected: {setup['type']} @ {setup['confidence']}%")
@@ -437,7 +408,7 @@ class LiveSetupMonitor:
         if len(self._seen_setups) > 50:
             self._seen_setups = set(list(self._seen_setups)[-50:])
 
-    def _format_setup_message(self, setup: Dict, symbol: str) -> str:
+    def _format_setup_message(self, setup: dict, symbol: str) -> str:
         """
         Format setup message for alert.
 
@@ -448,9 +419,9 @@ class LiveSetupMonitor:
         Returns:
             Formatted message string
         """
-        direction = setup['direction']
-        entry = setup['entry_price']
-        htf = setup.get('htf_bias', 'neutral')
+        direction = setup["direction"]
+        entry = setup["entry_price"]
+        htf = setup.get("htf_bias", "neutral")
 
         msg = f"{symbol} {direction} setup at ${entry:,.2f}"
 
