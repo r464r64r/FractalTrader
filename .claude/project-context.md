@@ -5,29 +5,25 @@
 ## Quick Status
 | Sprint | Status |
 |--------|--------|
-| 1-3 | ✅ COMPLETE (Dec 2025) |
-| 4 | 📋 NEXT (Feb 4-17, 2026) |
+| 1-4 | ✅ COMPLETE |
+| 5-6 | 📋 NEXT (E2E + Testnet) |
 
-**AWS:** Deployed. See `deploy/AWS_*.md`
+**Production Readiness:** ~92% | **Tests:** 350+ | **Coverage:** ~94%
 
-## Sprint 4 Priorities
-1. Strategy test coverage: 13-42% → 70%+
-2. File locking in `live/state_manager.py`
-3. API rate limiting (Hyperliquid)
-4. Error classification in circuit breaker
+## Next Steps
+1. E2E integration tests
+2. Monitoring dashboard (Streamlit)
+3. 7-day testnet validation
 
 ## Structure
 ```
-core/           # SMC detection (stable, 95%+ coverage)
-strategies/     # Trading logic (needs tests)
+core/           # SMC detection (stable)
+strategies/     # Trading logic (70%+ tested)
 risk/           # Position sizing (98%)
 live/           # Paper trading bot
-  hl_integration/  # Hyperliquid connector
-data/           # Market data fetchers
+data/           # Rate-limited fetchers
 deploy/         # AWS deployment
-docs/
-  sprints/      # Sprint 1-3 reports
-  archive/      # Historical docs
+docs/sprints/   # Sprint 1-4 reports
 ```
 
 ## Key Commands
@@ -37,7 +33,6 @@ python -m live.cli status     # Bot status
 ```
 
 ## Docs
-- [README.md](../README.md) - Project overview
 - [CLAUDE.md](../CLAUDE.md) - AI context
-- [docs/ROADMAP_Q1_2025.md](../docs/ROADMAP_Q1_2025.md) - Roadmap
+- [docs/ISSUES.md](../docs/ISSUES.md) - Status & next steps
 - [docs/sprints/](../docs/sprints/) - Sprint reports

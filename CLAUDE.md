@@ -3,36 +3,31 @@
 **Compact reference for AI assistants. Updated: 2026-01-02**
 
 ## Status
-- **Sprints 1-3:** COMPLETE (Dec 2025)
-- **Sprint 4:** Production Hardening (Feb 4-17, 2026) - NEXT
+- **Sprints 1-4:** ✅ COMPLETE
+- **Sprint 5-6:** E2E Testing + 7-Day Validation (pending)
 - **AWS:** Configured (`deploy/AWS_*.md`)
-- **Test coverage:** Core 95%+, Strategies 13-42% (needs work)
+- **Production Readiness:** ~92%
+- **Test Coverage:** ~94% (350+ tests)
 
 ## Project Structure
 ```
-core/           # SMC detection (95%+ coverage) - DO NOT BREAK
-strategies/     # Trading strategies (needs test coverage)
+core/           # SMC detection (95%+ coverage) - stable
+strategies/     # Trading strategies (70%+ coverage)
 risk/           # Position sizing, confidence (98%)
 live/           # Paper trading bot + CLI
   hl_integration/  # Hyperliquid exchange
-data/           # Market data fetchers
+data/           # Market data fetchers (rate limited)
 backtesting/    # vectorbt runner
 notebooks/      # Jupyter dashboards
-tests/          # pytest suite
+tests/          # pytest suite (350+)
 deploy/         # AWS/cloud scripts
 ```
 
-## Critical Files
-- `live/state_manager.py` - Position/trade persistence
+## Key Files
+- `live/state_manager.py` - Position persistence (file locking)
 - `live/cli.py` - Bot control (start/stop/status)
-- `core/*.py` - SMC algorithms (high coverage, stable)
-- `strategies/*.py` - Entry/exit logic (low coverage, active dev)
-
-## Known Issues (Sprint 4 priorities)
-1. **Strategy test coverage:** liquidity_sweep 13%, bos_orderblock 42%
-2. **Race condition:** StateManager concurrent access (needs file locking)
-3. **No rate limiting:** API calls to Hyperliquid
-4. **Error handling:** Circuit breaker treats all errors equally
+- `core/*.py` - SMC algorithms (stable)
+- `strategies/*.py` - Entry/exit logic (70%+ tested)
 
 ## Commands
 ```bash
@@ -45,18 +40,24 @@ python -m live.cli status
 python -m live.cli stop
 ```
 
-## Docs Structure
+## Next Steps (Sprint 5-6)
+1. E2E integration tests (data → signal → execution)
+2. Monitoring dashboard (Streamlit)
+3. 7-day testnet validation
+
+## Docs
 ```
 docs/
-├── ROADMAP_Q1_2025.md    # 6-sprint roadmap (Q1 2026)
+├── ISSUES.md             # Status & next steps
+├── ROADMAP_Q1_2025.md    # 6-sprint roadmap
 ├── SPRINT_FRAMEWORK.md   # Sprint methodology
 ├── sprints/              # Sprint reports (1-3)
 └── archive/              # Historical docs
-deploy/                   # AWS deployment guides
+deploy/                   # AWS deployment
 ```
 
 ## Rules
 - Never push to `main` directly
-- Run tests before commit
+- Pre-commit hooks run automatically (black, ruff, mypy)
 - Core modules: high bar for changes
 - Type hints + docstrings required
