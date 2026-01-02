@@ -106,5 +106,5 @@ jobs:
 
     - name: Run tests in Docker
       run: |
-        docker compose run --rm app pytest tests/ -v --tb=short
+        docker compose run --rm fractal-dev pytest tests/ -v --tb=short
       timeout-minutes: 10
