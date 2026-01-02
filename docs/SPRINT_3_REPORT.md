@@ -86,9 +86,9 @@ tests/test_live_trading.py ........................ [24 PASSED]
 
 **Coverage Breakdown:**
 - `state_manager.py`: 93% (11 lines uncovered - edge cases)
-- `hyperliquid/config.py`: 100%
-- `hyperliquid/testnet.py`: 55% (trading loop requires live testing)
-- `hyperliquid/trader.py`: 79%
+- `hl_integration/config.py`: 100%
+- `hl_integration/testnet.py`: 55% (trading loop requires live testing)
+- `hl_integration/trader.py`: 79%
 
 ---
 
@@ -216,7 +216,7 @@ Press Ctrl+C to stop
 ```
 CLI Layer (live/cli.py)
     ↓
-Trading Bot (live/hyperliquid/testnet.py)
+Trading Bot (live/hl_integration/testnet.py)
     ↓
 State Manager (live/state_manager.py) ← Persistence
     ↓

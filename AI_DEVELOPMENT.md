@@ -8,16 +8,18 @@ Guidelines for AI assistants (Claude, GPT, Copilot, etc.) working on FractalTrad
 
 **FractalTrader** is an open-source algorithmic trading system based on **Smart Money Concepts (SMC)** for cryptocurrency markets.
 
-**Current Status:** Sprint 1 - Jupyter Fractal Viewer (Dec 24 - Jan 6, 2025)
+**Current Status:** Sprints 1-3 Complete ✅ (Dec 24, 2025 - Dec 30, 2025)
+**Next:** Sprint 4 - Production Hardening (Feb 4-17, 2026)
 
 | Component | Status | Coverage |
 |-----------|--------|----------|
 | Core SMC Detection | ✅ Production | 95-100% |
-| Trading Strategies | ⚠️ In Progress | 79% |
+| Trading Strategies | ✅ Complete | 79-88% |
 | Risk Management | ✅ Production | 98% |
-| Data Layer | ⚠️ Needs retry logic | 90% |
-| Jupyter UI | 🚧 Sprint 1 (NOW) | 0% |
-| Live Trading | 🚨 Sprint 3-6 | 80% |
+| Data Layer | ✅ Complete (retry logic) | 90% |
+| Jupyter UI | ✅ Sprint 1-2 (Complete) | 100% |
+| Live Trading (Testnet) | ✅ Sprint 3 (Complete) | 70% |
+| Monitoring & Reports | ✅ Sprint 3 (Complete) | 93% |
 
 **Development Model:** 2-week sprints with mandatory deliverables (Ship or Die 🚢💀)
 **See:** [docs/SPRINT_FRAMEWORK.md](docs/SPRINT_FRAMEWORK.md) | [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md)
@@ -70,8 +72,11 @@ FractalTrader/
 │   ├── hyperliquid_fetcher.py # Live data
 │   └── ccxt_fetcher.py       # Historical data
 │
-├── live/           # Live trading (80% coverage) ⚠️ TESTNET ONLY
-│   └── hyperliquid/
+├── live/           # Live trading (70% coverage) ⚠️ TESTNET ONLY
+│   ├── cli.py                  # CLI interface
+│   ├── state_manager.py        # State persistence
+│   ├── reporting.py            # Performance reports
+│   └── hl_integration/
 │       ├── config.py
 │       ├── testnet.py
 │       └── trader.py
@@ -79,10 +84,13 @@ FractalTrader/
 ├── backtesting/    # Backtesting (Docker only)
 │   └── runner.py
 │
-└── tests/          # 222 tests (161 without Docker)
-    ├── test_market_structure.py (21 tests)
-    ├── test_strategies.py (58 tests)
-    └── ...
+└── tests/          # 280+ tests (comprehensive coverage)
+    ├── test_market_structure.py
+    ├── test_strategies.py
+    ├── test_risk.py
+    ├── test_state_manager.py
+    ├── test_live_trading.py
+    └── ... (17 test files total)
 ```
 
 ---
@@ -131,14 +139,16 @@ git clone https://github.com/r464r64r/FractalTrader.git
 cd FractalTrader
 pip install -r requirements.txt
 
-# Run tests (core)
-python -m pytest tests/ -v --ignore=tests/test_backtesting.py \
-  --ignore=tests/test_data_fetchers.py --ignore=tests/test_live_trading.py
-# Expected: 161 tests passing
+# Run tests (core - no Docker needed)
+python -m pytest tests/ -v \
+  --ignore=tests/test_backtesting.py \
+  --ignore=tests/test_data_fetchers.py \
+  --ignore=tests/test_live_trading.py
+# Expected: 134 tests passing
 
 # Run all tests (requires Docker)
 ./docker-start.sh test
-# Expected: 222 tests passing
+# Expected: 280+ tests passing
 ```
 
 ### Before Making Changes
@@ -431,5 +441,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ---
 
-**Last Updated:** 2025-12-21
-**Version:** Phase 1 Complete (v0.9)
+**Last Updated:** 2026-01-02
+**Version:** Sprints 1-3 Complete (v0.9)

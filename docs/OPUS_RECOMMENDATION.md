@@ -41,7 +41,7 @@ def _save_state(self) -> None:
 
 ### 2. Add API Rate Limiting (2-3h)
 
-**Location:** `data/hyperliquid_fetcher.py`, `live/hyperliquid/testnet.py`
+**Location:** `data/hyperliquid_fetcher.py`, `live/hl_integration/testnet.py`
 
 **Problem:** No rate limiting on API calls. Hyperliquid has limits (undocumented but exist). Ban = end of test.
 
@@ -62,7 +62,7 @@ def fetch_ohlcv(self, ...):
 
 ### 3. Improve Circuit Breaker Error Handling (2h)
 
-**Location:** `live/hyperliquid/testnet.py:220-221`
+**Location:** `live/hl_integration/testnet.py:220-221`
 
 **Problem:** All exceptions are treated equally. Transient network error = bot stops unnecessarily.
 

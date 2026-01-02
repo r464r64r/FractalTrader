@@ -54,7 +54,7 @@ python -m pytest tests/ -v \
 **Run:**
 ```bash
 ./docker-start.sh test
-# Expected: 206 tests passing
+# Expected: 280+ tests passing (with Docker, Sprints 1-3)
 ```
 
 ### 3. End-to-End Tests (Testnet)

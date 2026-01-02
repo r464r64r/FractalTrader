@@ -1,14 +1,14 @@
-# FractalTrader: 6-Sprint Roadmap (Q1 2025)
+# FractalTrader: 6-Sprint Roadmap (Q1 2026)
 
 ## Overview: 12 Weeks to Production
 
 ```
-Sprint 1 (Dec 24 - Jan 6):   Jupyter Fractal Viewer       [Research → Interactive]
-Sprint 2 (Jan 7 - Jan 20):   Live Market Dashboard         [Static → Live]
-Sprint 3 (Jan 21 - Feb 3):   Paper Trading Bot            [Analyze → Trade]
-Sprint 4 (Feb 4 - Feb 17):   Production Hardening         [Alpha → Beta]
-Sprint 5 (Feb 18 - Mar 3):   Tribal Weather MVP           [Single → Ecosystem]
-Sprint 6 (Mar 4 - Mar 17):   Live Trading (Testnet)       [Beta → Production]
+Sprint 1 (Dec 24-26, 2025):  Jupyter Fractal Viewer       [Research → Interactive]
+Sprint 2 (Dec 26, 2025):     Live Market Dashboard         [Static → Live]
+Sprint 3 (Dec 30, 2025):     Paper Trading Bot            [Analyze → Trade]
+Sprint 4 (Feb 4-17, 2026):   Production Hardening         [Alpha → Beta]
+Sprint 5 (Feb 18-Mar 3, 2026): Tribal Weather MVP         [Single → Ecosystem]
+Sprint 6 (Mar 4-17, 2026):   Live Trading (Testnet)       [Beta → Production]
 ```
 
 **After 12 weeks:** Production-ready trading system with unique tribal intelligence.
@@ -16,7 +16,7 @@ Sprint 6 (Mar 4 - Mar 17):   Live Trading (Testnet)       [Beta → Production]
 ---
 
 ## Sprint 1: Jupyter Fractal Viewer
-**Dec 24, 2024 - Jan 6, 2025**
+**Dec 24-26, 2025** ✅ COMPLETE
 
 ### 🎯 Goal
 Filip can analyze historical BTC trades in Jupyter with multi-timeframe SMC visualization.
@@ -56,7 +56,7 @@ Interactive Jupyter notebook featuring:
 ---
 
 ## Sprint 2: Live Market Dashboard
-**Jan 7 - Jan 20, 2025**
+**Dec 26, 2025** ✅ COMPLETE
 
 ### 🎯 Goal
 Filip can watch live BTC market with real-time SMC detection and signal generation.
@@ -96,7 +96,7 @@ Jupyter dashboard with live updates:
 ---
 
 ## Sprint 3: Paper Trading Bot
-**Jan 21 - Feb 3, 2025**
+**Dec 30, 2025** ✅ COMPLETE
 
 ### 🎯 Goal
 Filip can run automated paper trading bot that executes strategies on testnet.
@@ -137,7 +137,7 @@ CLI trading bot that:
 ---
 
 ## Sprint 4: Production Hardening
-**Feb 4 - Feb 17, 2025**
+**Feb 4-17, 2026** 📋 NEXT
 
 ### 🎯 Goal
 Trading system is robust enough for small-scale live trading ($100-500). Maximize production readiness from 85% → **95%+**.
@@ -211,7 +211,7 @@ Production-grade infrastructure:
 ---
 
 ## Sprint 5: Tribal Weather MVP
-**Feb 18 - Mar 3, 2025**
+**Feb 18-Mar 3, 2026** 📋 Planned
 
 ### 🎯 Goal
 Filip can see crypto tribal weather map and understand capital flow dynamics.
@@ -252,7 +252,7 @@ Tribal weather dashboard showing:
 ---
 
 ## Sprint 6: Live Trading (Testnet → Mainnet)
-**Mar 4 - Mar 17, 2025**
+**Mar 4-17, 2026** 📋 Planned
 
 ### 🎯 Goal
 Filip can run live trading on mainnet with small capital ($100-500) safely.

@@ -65,7 +65,7 @@ Successfully implemented all 4 critical hardening tasks recommended by Opus to e
 
 **Files Modified:**
 - `data/hyperliquid_fetcher.py` (+5 lines)
-- `live/hyperliquid/testnet.py` (+4 lines)
+- `live/hl_integration/testnet.py` (+4 lines)
 - `requirements.txt` (+1 line: ratelimit>=2.2.1)
 
 **Risk:** Low - decorators on existing methods, no logic changes
@@ -93,7 +93,7 @@ Successfully implemented all 4 critical hardening tasks recommended by Opus to e
 - Updated `_get_portfolio_value()` with graceful transient error handling
 
 **Files Modified:**
-- `live/hyperliquid/testnet.py` (+48 lines)
+- `live/hl_integration/testnet.py` (+48 lines)
 
 **Risk:** Low-Medium - requires defining error types correctly
 **Tested:** Error categorization logic uses keyword matching (robust)
@@ -138,7 +138,7 @@ Successfully implemented all 4 critical hardening tasks recommended by Opus to e
 **Syntax Checks:** ✅ All Python files verified with `py_compile`
 - ✓ `live/state_manager.py`
 - ✓ `data/hyperliquid_fetcher.py`
-- ✓ `live/hyperliquid/testnet.py`
+- ✓ `live/hl_integration/testnet.py`
 - ✓ `tests/test_state_manager.py`
 
 **Test Status:** Deferred (Docker not available in current environment)
@@ -155,7 +155,7 @@ Successfully implemented all 4 critical hardening tasks recommended by Opus to e
 | `live/state_manager.py` | +18 | -5 | File locking implementation |
 | `tests/test_state_manager.py` | +79 | -0 | Concurrent access tests |
 | `data/hyperliquid_fetcher.py` | +5 | -0 | Rate limiting decorators |
-| `live/hyperliquid/testnet.py` | +52 | -4 | Error categorization + rate limiting |
+| `live/hl_integration/testnet.py` | +52 | -4 | Error categorization + rate limiting |
 | `requirements.txt` | +2 | -0 | New dependencies |
 | `.pre-commit-config.yaml` | +62 | -0 | Pre-commit hooks |
 | `.github/workflows/ci.yml` | +88 | -0 | GitHub Actions CI |
