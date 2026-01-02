@@ -1,8 +1,8 @@
 # Fractal Trader — Development Guide
 
-**Last Updated:** 2024-12-30
-**Status:** Sprint 3 Complete (Paper Trading Bot) ✅
-**Overall Production Readiness:** 85% (up from 65% - Sprint 3 completed!)
+**Last Updated:** 2026-01-02
+**Status:** Sprints 1-3 Complete (Dec 24, 2025 - Dec 30, 2025) ✅
+**Overall Production Readiness:** 85% → Next: Sprint 4 (Feb 4-17, 2026)
 
 ---
 
@@ -86,7 +86,7 @@
 
 ### Path to Production
 
-**Sprint 3 Completed (Dec 30, 2024)** ✅
+**Sprint 3 Completed (Dec 30, 2025)** ✅
 ```
 ✅ Retry logic in data fetchers (with exponential backoff)
 ✅ State persistence (432 lines, 93% coverage)
@@ -240,7 +240,7 @@ python examples/backtest_demo.py --symbol BTC --days 90
 ```bash
 # Requires Docker (for vectorbt, hyperliquid dependencies)
 ./docker-start.sh test
-# Expected: 206 tests passing
+# Expected: 280+ tests passing (Sprints 1-3)
 ```
 
 ### Before Committing

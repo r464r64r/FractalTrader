@@ -181,7 +181,7 @@ class HyperliquidFetcher(BaseFetcher):
         # ... existing implementation ...
 ```
 
-**Step 4:** Apply to `live/hyperliquid/testnet.py` (API calls in trading):
+**Step 4:** Apply to `live/hl_integration/testnet.py` (API calls in trading):
 ```python
 from utils.rate_limit import rate_limited
 
@@ -237,7 +237,7 @@ def test_rate_limit_allows_burst():
 ## Task 3: Improve Circuit Breaker Error Handling (2h)
 
 ### Problem
-`live/hyperliquid/testnet.py:220-221` - All exceptions trigger same response. Network hiccup = unnecessary stop.
+`live/hl_integration/testnet.py:220-221` - All exceptions trigger same response. Network hiccup = unnecessary stop.
 
 ### Solution
 
@@ -295,7 +295,7 @@ def classify_error(error: Exception) -> type:
     return CriticalError
 ```
 
-**Step 2:** Modify `live/hyperliquid/testnet.py`:
+**Step 2:** Modify `live/hl_integration/testnet.py`:
 
 ```python
 from live.exceptions import TransientError, CriticalError, classify_error

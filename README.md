@@ -27,10 +27,10 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 
 ## 🎯 Current Status
 
-**Sprint 1:** ✅ **COMPLETE** (Dec 26, 2024 - 4 days ahead!)
-**Sprint 2:** ✅ **COMPLETE** (Dec 26, 2024 - 24 days ahead!)
-**Sprint 3:** ✅ **COMPLETE** (Dec 30, 2024 - 21 days ahead!) 🚀
-**Next Sprint:** Sprint 4 - Production Hardening (Feb 4-17, 2025)
+**Sprint 1:** ✅ **COMPLETE** (Dec 26, 2025 - 4 days ahead!)
+**Sprint 2:** ✅ **COMPLETE** (Dec 26, 2025 - 24 days ahead!)
+**Sprint 3:** ✅ **COMPLETE** (Dec 30, 2025 - 21 days ahead!) 🚀
+**Next Sprint:** Sprint 4 - Production Hardening (Feb 4-17, 2026)
 
 ### Latest: Paper Trading Bot 🤖 NEW!
 
@@ -286,7 +286,10 @@ FractalTrader/
 │   └── setup_detector.py     # Setup detection
 │
 ├── live/                 # Live trading (⚠️ TESTNET ONLY)
-│   └── hyperliquid/
+│   ├── cli.py                # Command-line interface
+│   ├── state_manager.py      # Position & trade persistence
+│   ├── reporting.py          # Performance metrics
+│   └── hl_integration/       # Hyperliquid exchange
 │       ├── config.py         # Configuration
 │       ├── testnet.py        # Paper trading
 │       └── trader.py         # Mainnet (NOT RECOMMENDED)
@@ -365,16 +368,16 @@ python -m pytest tests/ -v \
 
 ### 🔄 Current: Sprint-Based Development
 
-**Q1 2025 Goal:** Production-ready trading system with tribal intelligence
+**Q1 2026 Goal:** Production-ready trading system with tribal intelligence
 
-**Sprints 1-6** (Dec 2024 - Mar 2025):
+**Sprints 1-6** (Dec 2025 - Mar 2026):
 
-1. ✅ Jupyter Fractal Viewer (Interactive analysis) - Dec 26
-2. ✅ Live Market Dashboard (Real-time monitoring) - Dec 26
-3. ⏳ Paper Trading Bot (Autonomous testnet trading)
-4. ⏳ Production Hardening (Robustness & monitoring)
-5. ⏳ Tribal Weather MVP (Ecosystem intelligence)
-6. ⏳ Live Trading System (Mainnet deployment)
+1. ✅ Jupyter Fractal Viewer (Interactive analysis) - Dec 26, 2025
+2. ✅ Live Market Dashboard (Real-time monitoring) - Dec 26, 2025
+3. ✅ Paper Trading Bot (Autonomous testnet trading) - Dec 30, 2025
+4. 📋 Production Hardening (Robustness & monitoring) - Feb 4-17, 2026
+5. 📋 Tribal Weather MVP (Ecosystem intelligence) - Feb 18-Mar 3, 2026
+6. 📋 Live Trading System (Mainnet deployment) - Mar 4-17, 2026
 
 **After Q1:** Multi-exchange, advanced strategies, ML integration
 
@@ -418,16 +421,15 @@ alerts = AlertSystem(min_confidence=70, enable_sound=True)
 # Triggers on high-probability setups
 ```
 
-### Next 4 Sprints
+### Upcoming Sprints
 
 | Sprint | Dates | Deliverable | Status |
 | ------ | ----- | ----------- | ------ |
-| **3** | Jan 21-Feb 3 | Paper Trading Bot | Next |
-| **4** | Feb 4-17 | Production Hardening | Planned |
-| **5** | Feb 18-Mar 3 | Tribal Weather MVP | Planned |
-| **6** | Mar 4-17 | Live Trading (Mainnet) | Planned |
+| **4** | Feb 4-17, 2026 | Production Hardening | Next |
+| **5** | Feb 18-Mar 3, 2026 | Tribal Weather MVP | Planned |
+| **6** | Mar 4-17, 2026 | Live Trading (Mainnet) | Planned |
 
-**See:** [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md) for full 12-week plan
+**See:** [docs/ROADMAP_Q1_2025.md](docs/ROADMAP_Q1_2025.md) for full roadmap (applies to Q1 2026)
 
 ### Release Schedule
 
@@ -663,17 +665,18 @@ Free to use, modify, and distribute. No warranty provided.
 
 ## 📢 Status Updates
 
-**December 26, 2024:**
-- ✅ Sprint 1 complete (Jupyter Fractal Viewer) - 4 days early!
-- ✅ Sprint 2 complete (Live Market Dashboard) - 24 days early! 🔴
-- 📊 Overall: 80% production-ready (2/6 sprints done)
-- 🎯 Next: Paper Trading Bot (Sprint 3, Jan 7-20)
+**January 2, 2026:**
+- ✅ Sprint 1 complete (Jupyter Fractal Viewer) - Dec 26, 2025 (4 days early!)
+- ✅ Sprint 2 complete (Live Market Dashboard) - Dec 26, 2025 (24 days early!) 🔴
+- ✅ Sprint 3 complete (Paper Trading Bot) - Dec 30, 2025 (21 days early!) 🚀
+- 📊 Overall: 85% production-ready (3/6 sprints complete)
+- 🎯 Next: Production Hardening (Sprint 4, Feb 4-17, 2026)
 
 **Latest Deliverable:**
-- 🔴 Live dashboard with real-time alerts
-- 📊 Trade journal with auto-logging
-- 🔔 Visual + audio notifications
-- 📈 Multi-timeframe streaming
+- 🤖 Automated trading bot with CLI interface
+- 💾 State persistence & graceful restarts
+- 🔌 Circuit breakers & risk limits
+- 📊 Performance reports & metrics
 
 **Follow development:** [GitHub](https://github.com/r464r64r/FractalTrader)
 
