@@ -106,11 +106,29 @@ class HyperliquidTestnetTrader:
         # Set starting balance if not set
         if self.state_manager.get_starting_balance() == 0:
             portfolio_value = self._get_portfolio_value()
+
+            # If testnet account is unfunded, use simulated balance
+            if portfolio_value == 0:
+                portfolio_value = 10000.0  # $10k simulated balance for paper trading
+                self.simulation_mode = True
+                logger.warning(
+                    "Testnet account has $0 balance. Using simulated balance: $10,000"
+                )
+                logger.warning(
+                    "To fund testnet account, visit: https://app.hyperliquid-testnet.xyz/drip"
+                )
+                logger.info("Running in SIMULATION MODE - tracking positions in memory only")
+            else:
+                self.simulation_mode = False
+
             self.state_manager.set_starting_balance(portfolio_value)
             self.starting_balance = portfolio_value
             logger.info(f"Set starting balance: ${portfolio_value:,.2f}")
         else:
             self.starting_balance = self.state_manager.get_starting_balance()
+            # Check if we're still in simulation mode
+            actual_balance = self._get_actual_portfolio_value()
+            self.simulation_mode = actual_balance == 0
             logger.info(f"Resumed session with starting balance: " f"${self.starting_balance:,.2f}")
 
         # Circuit breakers (testnet-specific safeguards)
@@ -266,7 +284,12 @@ class HyperliquidTestnetTrader:
 
         # 1. Check drawdown limit
         current_balance = self._get_portfolio_value()
-        drawdown = (self.starting_balance - current_balance) / self.starting_balance
+
+        # Prevent division by zero
+        if self.starting_balance > 0:
+            drawdown = (self.starting_balance - current_balance) / self.starting_balance
+        else:
+            drawdown = 0.0
 
         if drawdown > self.max_daily_drawdown:
             logger.critical(
@@ -322,6 +345,10 @@ class HyperliquidTestnetTrader:
 
             # Round price to appropriate precision
             limit_price = round(limit_price, 2)
+
+            # Round size to avoid float_to_wire rounding errors
+            # Hyperliquid typically accepts up to 5 decimal places for size
+            size = round(size, 5)
 
             logger.info(
                 f"Placing order: {symbol} {'BUY' if is_buy else 'SELL'} "
@@ -390,9 +417,9 @@ class HyperliquidTestnetTrader:
 
     @sleep_and_retry
     @limits(calls=10, period=1)  # Max 10 portfolio value checks per second
-    def _get_portfolio_value(self) -> float:
+    def _get_actual_portfolio_value(self) -> float:
         """
-        Get current portfolio value.
+        Get current portfolio value from Hyperliquid account.
 
         Returns:
             Portfolio value in USD
@@ -423,12 +450,45 @@ class HyperliquidTestnetTrader:
                 logger.error(f"Failed to get portfolio value: {e}")
                 return 100000  # Default testnet starting balance
 
+    def _get_simulated_portfolio_value(self) -> float:
+        """
+        Calculate simulated portfolio value from tracked positions and cash.
+
+        Returns:
+            Simulated portfolio value in USD
+        """
+        # Start with the starting balance
+        value = self.starting_balance
+
+        # Add/subtract P&L from open positions
+        for position in self.open_positions.values():
+            # Each position tracks unrealized P&L
+            value += position.get("unrealized_pnl", 0.0)
+
+        # Add realized P&L from closed trades
+        for trade in self.trade_history:
+            if trade.get("status") == "closed":
+                value += trade.get("pnl", 0.0)
+
+        return max(0.0, value)
+
+    def _get_portfolio_value(self) -> float:
+        """
+        Get current portfolio value.
+        Returns simulated value if in simulation mode, actual value otherwise.
+
+        Returns:
+            Portfolio value in USD
+        """
+        if hasattr(self, "simulation_mode") and self.simulation_mode:
+            return self._get_simulated_portfolio_value()
+        else:
+            return self._get_actual_portfolio_value()
+
     def _calculate_atr(self, data) -> float:
         """Calculate current ATR (Average True Range)."""
-        from strategies.base import BaseStrategy
-
-        temp_strategy = BaseStrategy.__new__(BaseStrategy)
-        atr = temp_strategy._calculate_atr(data, period=14)
+        # Use the strategy instance we already have
+        atr = self.strategy._calculate_atr(data, period=14)
         if atr.empty:
             return 0.0
         return float(atr.iloc[-1])

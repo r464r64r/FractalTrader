@@ -56,7 +56,9 @@ RUN pip install --no-cache-dir \
     eth-account>=0.8.0 \
     python-dotenv>=1.0.0 \
     loguru>=0.7.0 \
-    tenacity>=8.2.0
+    tenacity>=8.2.0 \
+    ratelimit>=2.2.1 \
+    filelock>=3.13.0
 
 # Layer 3: Optional dependencies (skip heavy ones for AWS)
 RUN pip install --no-cache-dir \
