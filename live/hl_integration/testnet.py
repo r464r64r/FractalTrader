@@ -344,7 +344,8 @@ class HyperliquidTestnetTrader:
                 limit_price = current_price * (1 + offset)  # Sell higher
 
             # Round price to appropriate precision
-            limit_price = round(limit_price, 2)
+            # BTC requires integer prices (no decimals) for tick size
+            limit_price = round(limit_price)
 
             # Round size to avoid float_to_wire rounding errors
             # Hyperliquid typically accepts up to 5 decimal places for size
