@@ -4,6 +4,7 @@ Minimalist public dashboard for FractalTrader bot monitoring.
 Exposes live status on port 8080 for public viewing.
 """
 
+import html
 import json
 import logging
 import subprocess
@@ -223,24 +224,27 @@ def get_recent_logs(num_lines=50):
         )
         lines = result.stdout.strip().split("\n")
 
-        # Simple formatting
+        # Simple formatting with XSS protection
         formatted = []
         for line in lines:
             if not line.strip():
                 continue
 
+            # Escape HTML to prevent XSS attacks
+            safe_line = html.escape(line)
+
             # Highlight log levels
             if " - ERROR - " in line:
-                formatted.append(f'<span class="log-level-ERROR">{line}</span>')
+                formatted.append(f'<span class="log-level-ERROR">{safe_line}</span>')
             elif " - WARNING - " in line:
-                formatted.append(f'<span class="log-level-WARNING">{line}</span>')
+                formatted.append(f'<span class="log-level-WARNING">{safe_line}</span>')
             else:
-                formatted.append(f'<span class="log-level-INFO">{line}</span>')
+                formatted.append(f'<span class="log-level-INFO">{safe_line}</span>')
 
         return formatted if formatted else ["No recent logs"]
     except Exception as e:
         logger.error(f"Error reading logs: {e}")
-        return [f"Error reading logs: {e}"]
+        return [f"Error reading logs: {html.escape(str(e))}"]
 
 
 def get_current_branch():
