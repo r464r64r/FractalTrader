@@ -94,6 +94,8 @@ Thumbs.db
 # Trading state files
 .trading_state.json
 .trading_state.json.bak*
+.trading_state.json.lock
 .testnet_state.json
 .testnet_state.json.bak*
+.testnet_state.json.lock
 .trading_bot.pid

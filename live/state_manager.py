@@ -368,21 +368,50 @@ class StateManager:
         logger.error("No valid backups found")
         return False
 
+    def _serialize_value(self, value: Any) -> Any:
+        """
+        Recursively serialize a value for JSON storage.
+
+        Handles datetime, pandas Timestamp, objects with to_dict, dicts, and lists.
+        """
+        # Handle None
+        if value is None:
+            return None
+
+        # Handle datetime and pandas Timestamp
+        if isinstance(value, datetime):
+            return value.isoformat()
+
+        # Handle pandas Timestamp (common in trading data)
+        if hasattr(value, 'isoformat') and callable(value.isoformat):
+            return value.isoformat()
+
+        # Handle objects with to_dict method
+        if hasattr(value, "to_dict") and callable(value.to_dict):
+            return value.to_dict()
+
+        # Handle dictionaries (recurse)
+        if isinstance(value, dict):
+            return {k: self._serialize_value(v) for k, v in value.items()}
+
+        # Handle lists and tuples (recurse)
+        if isinstance(value, (list, tuple)):
+            return [self._serialize_value(v) for v in value]
+
+        # Handle objects with __dict__ (custom classes)
+        if hasattr(value, "__dict__") and not isinstance(value, type):
+            return self._serialize_value(value.__dict__)
+
+        # Return primitive types as-is (int, float, str, bool)
+        return value
+
     def _serialize_position(self, position_data: dict[str, Any]) -> dict[str, Any]:
         """
         Serialize position data for JSON storage.
 
         Converts datetime objects and other non-JSON types to strings.
         """
-        serialized = position_data.copy()
-
-        for key, value in serialized.items():
-            if isinstance(value, datetime):
-                serialized[key] = value.isoformat()
-            elif hasattr(value, "to_dict"):
-                serialized[key] = value.to_dict()
-
-        return serialized
+        return self._serialize_value(position_data)
 
     def _serialize_trade(self, trade_data: dict[str, Any]) -> dict[str, Any]:
         """
@@ -390,12 +419,4 @@ class StateManager:
 
         Converts datetime objects and other non-JSON types to strings.
         """
-        serialized = trade_data.copy()
-
-        for key, value in serialized.items():
-            if isinstance(value, datetime):
-                serialized[key] = value.isoformat()
-            elif hasattr(value, "to_dict"):
-                serialized[key] = value.to_dict()
-
-        return serialized
+        return self._serialize_value(trade_data)
