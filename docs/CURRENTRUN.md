@@ -1,17 +1,29 @@
 # Current Testnet Run - Monitoring Guide
 
 **Created:** 2026-01-04 17:14 UTC
-**Updated:** 2026-01-05 00:21 UTC (FIXES APPLIED)
-**Branch:** `fix/testnet-zero-balance-simulation`
-**PR:** #30 (pending approval)
+**Updated:** 2026-01-05 15:47 UTC (REAL TRADING ACTIVE)
+**Branch:** `fix/testnet-btc-tick-size`
+**PR:** #31 (pending approval)
+
+---
+
+## 🎉 MILESTONE: REAL TRADING ACTIVE (2026-01-05 15:47)
+
+Bot successfully migrated from simulation mode to **real testnet trading**!
+
+### Migration Summary
+- ✅ New wallet activated: `0xf7ab281eeBF13C8720a7eE531934a4803E905403`
+- ✅ Fixed BTC tick size bug (PR #31)
+- ✅ First real orders accepted by Hyperliquid
+- ✅ Currently trading: SHORT 0.00122 BTC @ $93,200.90
 
 ---
 
 ## 🔧 FIXES APPLIED (2026-01-05)
 
-After initial 51-minute run (Jan 4, 16:52-17:43), two critical issues were identified and fixed:
+Three critical issues identified and fixed during testnet validation:
 
-### Issue #1: Circuit Breaker False Triggers
+### Issue #1: Circuit Breaker False Triggers (PR #30)
 **Problem:** Circuit breaker counted failed order attempts instead of executed trades
 - Bot stopped after 51 minutes (51 failed attempts > max_trades=50)
 - In simulation mode, all orders fail (wallet unfunded), causing premature shutdown
@@ -21,7 +33,7 @@ After initial 51-minute run (Jan 4, 16:52-17:43), two critical issues were ident
 - Failed orders no longer increment trade counter
 - Circuit breaker now correctly monitors actual trading activity
 
-### Issue #2: State Persistence JSON Errors
+### Issue #2: State Persistence JSON Errors (PR #30)
 **Problem:** `Object of type Timestamp is not JSON serializable`
 - Pandas Timestamp objects and Signal dataclass instances couldn't be serialized
 - All state backups were corrupted (76 bytes)
@@ -31,39 +43,52 @@ After initial 51-minute run (Jan 4, 16:52-17:43), two critical issues were ident
 - Handles datetime, pandas.Timestamp, dataclasses, nested dicts/lists
 - All non-primitive types converted to JSON-safe formats
 
+### Issue #3: BTC Price Tick Size (PR #31)
+**Problem:** Orders rejected with `"Order has invalid price"`
+- Bot rounded prices to 2 decimals (e.g., `$93,259.17`)
+- Hyperliquid BTC requires integer prices (tick size = $1)
+
+**Fix:** `live/hl_integration/testnet.py:347-348`
+- Changed `round(price, 2)` → `round(price)`
+- Prices now rounded to nearest dollar (e.g., `$93,259`)
+
 ### Actions Taken
-1. ✅ Fixed circuit breaker logic
-2. ✅ Fixed state persistence serialization
-3. ✅ Cleaned corrupted state files (`.testnet_state.json*`, `.lock`)
-4. ✅ Restarted bot with clean state (2026-01-05 00:20:03 UTC)
+1. ✅ Fixed circuit breaker logic (PR #30)
+2. ✅ Fixed state persistence serialization (PR #30)
+3. ✅ Activated new wallet with testnet funds
+4. ✅ Fixed BTC tick size rounding (PR #31)
+5. ✅ Bot migrated from simulation to real trading (2026-01-05 15:47 UTC)
 
 ---
 
 ## Current Status
 
 ```
-🟢 RUNNING in SIMULATION MODE (FIXED)
-Started: 2026-01-05 00:20:03 UTC
-Mode: Paper trading with $10k virtual balance
+🟢 RUNNING - REAL TRADING ACTIVE
+Started: 2026-01-05 15:46:51 UTC
+Mode: Real testnet trading
 Strategy: liquidity_sweep
 Symbol: BTC
 Timeframe: 1h
 Network: Hyperliquid Testnet
 
 ✅ Market data fetching: Every 60 seconds
-✅ Signal generation: Working (bearish -1 detected)
-✅ Position sizing: Working (0.0054 BTC ~$500)
-✅ State persistence: FIXED - no more JSON errors
-⚠️ Orders: Failing (expected - wallet not activated)
-🔧 Circuit breaker: FIXED - won't trigger on failed orders
+✅ Signal generation: Working (bearish SHORT signal)
+✅ Position sizing: Working (0.0006 BTC per order)
+✅ State persistence: Working (JSON serialization fixed)
+✅ Orders: ACCEPTED by exchange
+✅ Circuit breaker: Working correctly
+✅ Price rounding: Fixed (integer prices)
 ```
 
 ### Wallet Information
 
-- **Address:** `0xEA28Cb42efE3e90831a583Ee1d376c9e64bc4A02`
-- **Balance:** $0.00 (unfunded)
-- **Mode:** SIMULATION (not executing real orders)
-- **Fund at:** https://app.hyperliquid-testnet.xyz/drip
+- **Address:** `0xf7ab281eeBF13C8720a7eE531934a4803E905403`
+- **Balance:** $998.79 (funded)
+- **Mode:** REAL TRADING (executing real orders)
+- **Position:** SHORT 0.00122 BTC @ $93,200.90
+- **Unrealized P&L:** -$0.19
+- **Monitor at:** https://app.hyperliquid-testnet.xyz
 
 ---
 

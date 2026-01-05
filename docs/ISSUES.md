@@ -6,14 +6,17 @@
 
 Critical fixes applied during testnet validation:
 
-| Issue | Solution | Files Changed |
-|-------|----------|---------------|
-| Circuit breaker false triggers | Only count successful orders | `testnet.py:366-398` |
-| State persistence JSON errors | Recursive serialization (pandas.Timestamp) | `state_manager.py:371-422` |
+| Issue | Solution | Files Changed | PR |
+|-------|----------|---------------|-----|
+| Circuit breaker false triggers | Only count successful orders | `testnet.py:366-398` | #30 |
+| State persistence JSON errors | Recursive serialization (pandas.Timestamp) | `state_manager.py:371-422` | #30 |
+| BTC tick size invalid price | Integer rounding for tick size | `testnet.py:347-348` | #31 |
 
-**Impact:** Bot can now run 24h validation in simulation mode without premature shutdown.
+**Impact:**
+- PR #30: Bot stable in simulation mode (24h+ runtime)
+- PR #31: **Bot now trading on real testnet** 🎉
 
-See: `docs/DECISION_LOG_CIRCUIT_BREAKER_FIX.md` for details.
+See: `docs/DECISION_LOG_CIRCUIT_BREAKER_FIX.md` and `docs/CURRENTRUN.md` for details.
 
 ---
 
@@ -41,16 +44,22 @@ All critical issues from Sprint 4 have been resolved:
 
 ## Current: Testnet Validation
 
-**Status:** 🟢 IN PROGRESS (PR #30)
-- **Started:** 2026-01-05 00:20 UTC
-- **Fixes Applied:** Circuit breaker + state persistence
-- **Target:** 24h continuous operation (until Jan 6 00:20 UTC)
+**Status:** 🟢 REAL TRADING ACTIVE (PR #31)
+- **Started:** 2026-01-05 15:46 UTC
+- **Wallet:** `0xf7ab281eeBF13C8720a7eE531934a4803E905403`
+- **Mode:** Real testnet trading (migrated from simulation)
+- **Fixes Applied:** Circuit breaker + state persistence + tick size
 - **Monitoring:** See `docs/CURRENTRUN.md`
 
-**Merge Criteria:**
-- ✅ No crashes for 24h
-- ✅ State persistence working
-- ✅ Circuit breakers functioning correctly
+**Merge Criteria (PR #31):**
+- ✅ Orders accepted by exchange
+- ✅ Real positions opened on testnet
+- 🔄 Extended runtime validation (monitoring in progress)
+
+**Previous (PR #30):**
+- ✅ Fixed circuit breaker logic
+- ✅ Fixed state persistence
+- ✅ 24h+ simulation mode runtime achieved
 
 ---
 
