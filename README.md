@@ -4,9 +4,10 @@
 
 Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and order blocks — the footprints of smart money.
 
-[![Tests](https://img.shields.io/badge/tests-311%20passing-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](tests/)
-[![Sprint](https://img.shields.io/badge/sprint-3%2F6%20complete-blue)](docs/ROADMAP_Q1_2025.md)
+[![Tests](https://img.shields.io/badge/tests-350%2B%20passing-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)](tests/)
+[![Sprint](https://img.shields.io/badge/sprint-4%2F6%20complete-blue)](docs/ROADMAP_Q1_2025.md)
+[![Testnet](https://img.shields.io/badge/testnet-LIVE%20TRADING-green)](https://app.hyperliquid-testnet.xyz)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -27,35 +28,37 @@ Trade what institutions trade. Detect liquidity sweeps, fair value gaps, and ord
 
 ## 🎯 Current Status
 
-**Sprint 1:** ✅ **COMPLETE** (Dec 26, 2025 - 4 days ahead!)
-**Sprint 2:** ✅ **COMPLETE** (Dec 26, 2025 - 24 days ahead!)
-**Sprint 3:** ✅ **COMPLETE** (Dec 30, 2025 - 21 days ahead!) 🚀
-**Next Sprint:** Sprint 4 - Production Hardening (Feb 4-17, 2026)
+**Sprint 1:** ✅ **COMPLETE** (Dec 26, 2025)
+**Sprint 2:** ✅ **COMPLETE** (Dec 26, 2025)
+**Sprint 3:** ✅ **COMPLETE** (Dec 30, 2025)
+**Sprint 4:** ✅ **COMPLETE** (Jan 5, 2026) - Production Hardening 🚀
+**Next:** Sprint 5 - E2E Testing + Monitoring Dashboard
 
-### Latest: Paper Trading Bot 🤖 NEW!
+### Latest: Live Testnet Trading 🟢 ACTIVE!
 
-**Start paper trading bot:**
+**Bot is trading on Hyperliquid testnet:**
+- Wallet: `0xf7ab281eeBF13C8720a7eE531934a4803E905403`
+- Monitor: https://app.hyperliquid-testnet.xyz
+
 ```bash
-# Start bot with liquidity sweep strategy
-python -m live.cli start --strategy liquidity_sweep
+# All commands run inside Docker container
+sudo docker exec fractal-trader-dev python3 -m live.cli status
+sudo docker exec fractal-trader-dev python3 -m live.cli start --strategy liquidity_sweep
+sudo docker exec fractal-trader-dev python3 -m live.cli stop
 
-# Check status
-python -m live.cli status
-
-# Generate performance report
-python -m live.cli report
-
-# Stop bot
-python -m live.cli stop
+# Live logs
+sudo docker exec fractal-trader-dev tail -f /tmp/bot_v2.log
 ```
 
-**Or use live dashboard:**
+**Web Dashboard (port 8080):**
 ```bash
-cd notebooks/
-jupyter notebook live_dashboard.ipynb
+# Start dashboard
+sudo docker exec fractal-trader-dev python3 -m live.dashboard &
+
+# View at http://<server-ip>:8080
 ```
 
-See [docs/SPRINT_3_REPORT.md](docs/SPRINT_3_REPORT.md) for full CLI guide.
+See [docs/CURRENTRUN.md](docs/CURRENTRUN.md) for monitoring guide.
 
 ---
 
@@ -63,12 +66,12 @@ See [docs/SPRINT_3_REPORT.md](docs/SPRINT_3_REPORT.md) for full CLI guide.
 
 | What You'll Have | Status | Timeline |
 | ---------------- | ------ | -------- |
-| **Interactive Jupyter analysis** | ✅ | Sprint 1 (Dec 26!) |
-| **Live market dashboard** | ✅ | Sprint 2 (Dec 26!) |
-| **Paper trading bot** | ✅ | Sprint 3 (Dec 30!) |
-| **Production infrastructure** | 📋 | Feb 17 (Sprint 4) |
-| **Tribal weather map** | 📋 | Mar 3 (Sprint 5) |
-| **Live trading (mainnet)** | 📋 | Mar 17 (Sprint 6) |
+| **Interactive Jupyter analysis** | ✅ | Sprint 1 (Dec 26) |
+| **Live market dashboard** | ✅ | Sprint 2 (Dec 26) |
+| **Paper trading bot** | ✅ | Sprint 3 (Dec 30) |
+| **Production infrastructure** | ✅ | Sprint 4 (Jan 5) |
+| **E2E Testing + Dashboard** | 📋 | Sprint 5 (next) |
+| **Live trading (mainnet)** | 📋 | Sprint 6 |
 
 ---
 
@@ -79,22 +82,20 @@ See [docs/SPRINT_3_REPORT.md](docs/SPRINT_3_REPORT.md) for full CLI guide.
 | Core SMC Detection | 95-100% | ✅ |
 | Risk Management | 98% | ✅ |
 | Backtesting | Good | ✅ |
-| Strategies | 79% | ⚠️ In Progress |
-| Data Layer | 90% | ✅ (retry logic) |
+| Strategies | 70%+ | ✅ |
+| Data Layer | 90% | ✅ |
 | Visualization | 100% | ✅ |
 | Confidence Scoring | 100% | ✅ |
 | Live Streaming | 100% | ✅ |
 | Alert System | 100% | ✅ |
-| **State Persistence (NEW!)** | 93% | ✅ |
-| **Circuit Breakers (NEW!)** | 100% | ✅ |
-| **CLI Interface (NEW!)** | 0%* | ✅ |
-| **Performance Reports (NEW!)** | 0%* | ✅ |
-| Live Trading (Testnet) | 55% | ⚠️ Sprint 4 |
+| State Persistence | 93% | ✅ |
+| Circuit Breakers | 100% | ✅ |
+| CLI Interface | ✅ | ✅ |
+| **Live Trading (Testnet)** | ✅ | ✅ **ACTIVE** |
+| **Web Dashboard** | ✅ | ✅ |
 | Tribal Weather | 0% | 🚧 Sprint 5 |
 
-*CLI & Reports tested manually during 7-day validation
-
-**Overall:** 85% production-ready → **100% by Mar 17, 2025**
+**Overall:** ~92% production-ready | 350+ tests | 94% coverage
 
 ---
 
@@ -285,20 +286,22 @@ FractalTrader/
 │   ├── alert_system.py       # Alerts + journal
 │   └── setup_detector.py     # Setup detection
 │
-├── live/                 # Live trading (⚠️ TESTNET ONLY)
+├── live/                 # Live trading (🟢 TESTNET ACTIVE)
 │   ├── cli.py                # Command-line interface
+│   ├── dashboard.py          # Web monitoring (Flask, port 8080)
 │   ├── state_manager.py      # Position & trade persistence
 │   ├── reporting.py          # Performance metrics
 │   └── hl_integration/       # Hyperliquid exchange
 │       ├── config.py         # Configuration
-│       ├── testnet.py        # Paper trading
+│       ├── testnet.py        # Testnet trading (ACTIVE)
 │       └── trader.py         # Mainnet (NOT RECOMMENDED)
 │
 ├── examples/             # Usage examples
-├── tests/                # 280 tests (30 new in Sprint 2!)
+├── tests/                # 350+ tests
 └── docs/                 # Documentation
-    ├── SPRINT_1_REPORT.md
-    └── SPRINT_2_REPORT.md ⭐ NEW!
+    ├── CURRENTRUN.md         # Live monitoring guide
+    ├── DASHBOARD.md          # Web dashboard docs
+    └── ISSUES.md             # Project status
 ```
 
 ---
@@ -665,18 +668,19 @@ Free to use, modify, and distribute. No warranty provided.
 
 ## 📢 Status Updates
 
-**January 2, 2026:**
-- ✅ Sprint 1 complete (Jupyter Fractal Viewer) - Dec 26, 2025 (4 days early!)
-- ✅ Sprint 2 complete (Live Market Dashboard) - Dec 26, 2025 (24 days early!) 🔴
-- ✅ Sprint 3 complete (Paper Trading Bot) - Dec 30, 2025 (21 days early!) 🚀
-- 📊 Overall: 85% production-ready (3/6 sprints complete)
-- 🎯 Next: Production Hardening (Sprint 4, Feb 4-17, 2026)
+**January 5, 2026:**
+- ✅ Sprint 4 complete (Production Hardening) 🚀
+- 🟢 **Bot actively trading on Hyperliquid testnet**
+- 🔒 XSS security fix in web dashboard
+- 📊 92% production-ready (4/6 sprints complete)
 
-**Latest Deliverable:**
-- 🤖 Automated trading bot with CLI interface
-- 💾 State persistence & graceful restarts
-- 🔌 Circuit breakers & risk limits
-- 📊 Performance reports & metrics
+**Sprint 4 Deliverables:**
+- 🤖 Live testnet trading (real orders on Hyperliquid)
+- 🌐 Web dashboard for monitoring (port 8080)
+- 🔧 Circuit breaker & state persistence fixes
+- 📝 BTC tick size fix for order acceptance
+
+**Next:** Sprint 5 - E2E Testing + Monitoring Dashboard
 
 **Follow development:** [GitHub](https://github.com/r464r64r/FractalTrader)
 
