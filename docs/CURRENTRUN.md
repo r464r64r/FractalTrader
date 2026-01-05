@@ -1,16 +1,49 @@
 # Current Testnet Run - Monitoring Guide
 
 **Created:** 2026-01-04 17:14 UTC
+**Updated:** 2026-01-05 00:21 UTC (FIXES APPLIED)
 **Branch:** `fix/testnet-zero-balance-simulation`
 **PR:** #30 (pending approval)
+
+---
+
+## 🔧 FIXES APPLIED (2026-01-05)
+
+After initial 51-minute run (Jan 4, 16:52-17:43), two critical issues were identified and fixed:
+
+### Issue #1: Circuit Breaker False Triggers
+**Problem:** Circuit breaker counted failed order attempts instead of executed trades
+- Bot stopped after 51 minutes (51 failed attempts > max_trades=50)
+- In simulation mode, all orders fail (wallet unfunded), causing premature shutdown
+
+**Fix:** `live/hl_integration/testnet.py:366-398`
+- Only track positions and trades when `order.get('status') == 'ok'`
+- Failed orders no longer increment trade counter
+- Circuit breaker now correctly monitors actual trading activity
+
+### Issue #2: State Persistence JSON Errors
+**Problem:** `Object of type Timestamp is not JSON serializable`
+- Pandas Timestamp objects and Signal dataclass instances couldn't be serialized
+- All state backups were corrupted (76 bytes)
+
+**Fix:** `live/state_manager.py:371-422`
+- Added recursive `_serialize_value()` method
+- Handles datetime, pandas.Timestamp, dataclasses, nested dicts/lists
+- All non-primitive types converted to JSON-safe formats
+
+### Actions Taken
+1. ✅ Fixed circuit breaker logic
+2. ✅ Fixed state persistence serialization
+3. ✅ Cleaned corrupted state files (`.testnet_state.json*`, `.lock`)
+4. ✅ Restarted bot with clean state (2026-01-05 00:20:03 UTC)
 
 ---
 
 ## Current Status
 
 ```
-🟢 RUNNING in SIMULATION MODE
-Started: 2026-01-04 16:52:18 UTC
+🟢 RUNNING in SIMULATION MODE (FIXED)
+Started: 2026-01-05 00:20:03 UTC
 Mode: Paper trading with $10k virtual balance
 Strategy: liquidity_sweep
 Symbol: BTC
@@ -19,9 +52,10 @@ Network: Hyperliquid Testnet
 
 ✅ Market data fetching: Every 60 seconds
 ✅ Signal generation: Working (bearish -1 detected)
-✅ Position sizing: Working (0.0055 BTC ~$500)
+✅ Position sizing: Working (0.0054 BTC ~$500)
+✅ State persistence: FIXED - no more JSON errors
 ⚠️ Orders: Failing (expected - wallet not activated)
-⚠️ State persistence: JSON error (non-critical in simulation)
+🔧 Circuit breaker: FIXED - won't trigger on failed orders
 ```
 
 ### Wallet Information
@@ -168,17 +202,7 @@ sudo docker exec fractal-trader-dev grep "ZeroDivisionError" /tmp/bot_v2.log
 
 ## Current Known Issues (Non-Critical)
 
-### 1. State Persistence Error
-```
-ERROR - Failed to save state: Object of type Timestamp is not JSON serializable
-```
-
-**Impact:** State not saved between restarts
-**Workaround:** In simulation mode, state tracked in memory only
-**Fix:** Future improvement (serialize datetime to ISO string)
-**Criticality:** Low - doesn't affect simulation mode operation
-
-### 2. Order Execution Failures
+### 1. Order Execution Failures (Expected Behavior)
 ```
 Order placed: {'status': 'err', 'response': 'User or API Wallet ... does not exist.'}
 ```
@@ -190,13 +214,35 @@ Order placed: {'status': 'err', 'response': 'User or API Wallet ... does not exi
 
 ---
 
+## ~~Fixed Issues~~ (Historical)
+
+### ~~1. State Persistence Error~~ ✅ FIXED 2026-01-05
+```
+ERROR - Failed to save state: Object of type Timestamp is not JSON serializable
+```
+**Status:** FIXED - Added recursive serialization in `state_manager.py:371-422`
+
+### ~~2. Circuit Breaker False Triggers~~ ✅ FIXED 2026-01-05
+**Status:** FIXED - Only count successful orders in `testnet.py:366-398`
+
+---
+
 ## Validation Timeline
 
+### ~~Initial Run~~ (Jan 4, 2026 - STOPPED DUE TO BUGS)
 ```
-NOW (17:14 UTC)         → Bot running 22 min ✅
-+1 hour (18:14 UTC)     → Check: still running?
-+6 hours (23:14 UTC)    → Check: signal patterns
-+24 hours (17:14 UTC)   → Full review → READY FOR MERGE
+16:52 UTC → Bot started
+17:43 UTC → STOPPED (circuit breaker false trigger at 51 trades)
+Duration: 51 minutes ❌
+Issues: Circuit breaker + state persistence bugs identified
+```
+
+### Current Run (Jan 5, 2026 - FIXES APPLIED)
+```
+00:20 UTC → Bot restarted with fixes
++1 hour (01:20 UTC)     → Check: still running?
++6 hours (06:20 UTC)    → Check: signal patterns
++24 hours (Jan 6 00:20) → Full review → READY FOR MERGE
 ```
 
 **After 24 hours continuous operation with no crashes → Safe to merge PR #30**
@@ -445,8 +491,14 @@ sudo docker exec fractal-trader-dev grep "Order placed:" /tmp/bot_real.log | tai
 
 ---
 
-**Last Updated:** 2026-01-04 17:14 UTC
+**Last Updated:** 2026-01-05 00:21 UTC
 **Maintained by:** Development Team
+
+**Changelog:**
+- 2026-01-05 00:21 - Applied fixes for circuit breaker and state persistence, restarted bot
+- 2026-01-04 17:43 - Initial run stopped due to bugs (51 min runtime)
+- 2026-01-04 17:14 - Initial documentation created
+
 **Related Docs:**
 - `docs/DECISION_LOG_TESTNET_SIMULATION.md` - Technical decision rationale
 - `docs/ISSUES.md` - Project status tracker

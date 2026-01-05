@@ -362,36 +362,40 @@ class HyperliquidTestnetTrader:
 
             logger.info(f"Order placed: {order}")
 
-            # Track position
-            position_data = {
-                "signal": signal,
-                "size": size,
-                "entry_price": limit_price,
-                "stop_loss": signal.stop_loss,
-                "take_profit": signal.take_profit,
-                "timestamp": datetime.now(),
-                "order": order,
-            }
-            self.open_positions[symbol] = position_data
+            # Only track position and record trade if order was successful
+            if order.get('status') == 'ok':
+                # Track position
+                position_data = {
+                    "signal": signal,
+                    "size": size,
+                    "entry_price": limit_price,
+                    "stop_loss": signal.stop_loss,
+                    "take_profit": signal.take_profit,
+                    "timestamp": datetime.now(),
+                    "order": order,
+                }
+                self.open_positions[symbol] = position_data
 
-            # Save position to state manager (persists to disk)
-            self.state_manager.save_position(symbol, position_data)
+                # Save position to state manager (persists to disk)
+                self.state_manager.save_position(symbol, position_data)
 
-            # Record trade
-            trade_data = {
-                "timestamp": datetime.now(),
-                "symbol": symbol,
-                "direction": "LONG" if is_buy else "SHORT",
-                "size": size,
-                "entry_price": limit_price,
-                "stop_loss": signal.stop_loss,
-                "confidence": signal.confidence,
-                "status": "OPEN",
-            }
-            self.trade_history.append(trade_data)
+                # Record trade
+                trade_data = {
+                    "timestamp": datetime.now(),
+                    "symbol": symbol,
+                    "direction": "LONG" if is_buy else "SHORT",
+                    "size": size,
+                    "entry_price": limit_price,
+                    "stop_loss": signal.stop_loss,
+                    "confidence": signal.confidence,
+                    "status": "OPEN",
+                }
+                self.trade_history.append(trade_data)
 
-            # Save trade to state manager (persists to disk)
-            self.state_manager.save_trade(trade_data)
+                # Save trade to state manager (persists to disk)
+                self.state_manager.save_trade(trade_data)
+            else:
+                logger.debug(f"Order failed, not tracking position: {order.get('response', 'Unknown error')}")
 
         except Exception as e:
             error_msg = str(e).lower()
