@@ -224,6 +224,11 @@ class HyperliquidTestnetTrader:
             logger.info(f"Signal: {latest_signal.direction} @ " f"{latest_signal.entry_price:.2f}")
 
             # 4. Check if we can open position
+            # First check if position already exists for this symbol
+            if symbol in self.open_positions:
+                logger.warning(f"Position already exists for {symbol}, skipping signal")
+                return
+
             if len(self.open_positions) >= self.config.max_open_positions:
                 logger.warning("Max positions reached, skipping signal")
                 return
