@@ -225,6 +225,7 @@ class HyperliquidTestnetTrader:
 
             # 4. Check if we can open position
             # First check if position already exists for this symbol
+            symbol = self.config.default_symbol
             if symbol in self.open_positions:
                 logger.warning(f"Position already exists for {symbol}, skipping signal")
                 return
