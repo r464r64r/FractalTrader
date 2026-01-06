@@ -136,6 +136,9 @@ class HyperliquidTestnetTrader:
         self.max_daily_trades = 50  # Limit number of trades per day
         self.circuit_breaker_triggered = False
 
+        # Sync positions with exchange on startup (critical for recovery)
+        self._sync_positions_with_exchange()
+
         logger.info("TestnetTrader initialized")
         logger.info(
             f"Circuit breakers: max_drawdown={self.max_daily_drawdown:.1%}, max_trades={self.max_daily_trades}"
@@ -543,3 +546,140 @@ class HyperliquidTestnetTrader:
         logger.info(f"Open positions: {len(self.open_positions)}")
         logger.info(f"Final portfolio value: ${self._get_portfolio_value():,.2f}")
         logger.info("=" * 50)
+
+    def _sync_positions_with_exchange(self):
+        """
+        Synchronize local state with exchange positions on startup.
+
+        Critical for recovery after crashes, restarts, or state file corruption.
+        Exchange is source of truth - local state must match reality.
+
+        This prevents the bug where bot restarts with clean state but exchange
+        has open positions, leading to unintended position accumulation.
+        """
+        try:
+            # Skip sync in simulation mode (no real positions on exchange)
+            if self.simulation_mode:
+                logger.info("Simulation mode - skipping exchange position sync")
+                return
+
+            logger.info("Syncing positions with exchange...")
+
+            # Get current positions from exchange
+            user_state = self.info.user_state(self.wallet.address)
+            exchange_positions = user_state.get('assetPositions', [])
+
+            # Build lookup of exchange positions by symbol
+            exchange_pos_map = {}
+            for asset_pos in exchange_positions:
+                pos = asset_pos.get('position', {})
+                coin = pos.get('coin')
+                size = float(pos.get('szi', 0))
+
+                if coin and size != 0:
+                    exchange_pos_map[coin] = {
+                        'size': size,
+                        'entry_price': float(pos.get('entryPx', 0)),
+                        'unrealized_pnl': float(pos.get('unrealizedPnl', 0)),
+                        'position_value': float(pos.get('positionValue', 0)),
+                        'margin_used': float(pos.get('marginUsed', 0)),
+                        'leverage': pos.get('leverage', {}),
+                    }
+
+            # Get local positions
+            local_symbols = set(self.open_positions.keys())
+            exchange_symbols = set(exchange_pos_map.keys())
+
+            # Detect discrepancies
+            missing_in_state = exchange_symbols - local_symbols
+            extra_in_state = local_symbols - exchange_symbols
+
+            # Log discrepancies
+            if missing_in_state or extra_in_state:
+                logger.warning("⚠️  POSITION SYNC DISCREPANCY DETECTED")
+                logger.warning("=" * 60)
+
+                if missing_in_state:
+                    logger.warning(f"❌ Exchange has positions NOT in local state:")
+                    for symbol in missing_in_state:
+                        pos = exchange_pos_map[symbol]
+                        logger.warning(
+                            f"   {symbol}: {pos['size']:+.5f} @ ${pos['entry_price']:,.2f} "
+                            f"(P&L: ${pos['unrealized_pnl']:+.2f})"
+                        )
+
+                if extra_in_state:
+                    logger.warning(f"❌ Local state has positions NOT on exchange:")
+                    for symbol in extra_in_state:
+                        pos = self.open_positions[symbol]
+                        logger.warning(
+                            f"   {symbol}: {pos.get('size', 0):+.5f} @ "
+                            f"${pos.get('entry_price', 0):,.2f}"
+                        )
+
+                logger.warning("=" * 60)
+                logger.warning("🔧 Syncing local state to match exchange (source of truth)...")
+
+            # Remove positions that don't exist on exchange
+            for symbol in extra_in_state:
+                logger.info(f"Removing {symbol} from local state (not on exchange)")
+                del self.open_positions[symbol]
+                self.state_manager.remove_position(symbol)
+
+            # Add positions that exist on exchange but not in state
+            for symbol in missing_in_state:
+                exchange_pos = exchange_pos_map[symbol]
+                logger.warning(
+                    f"⚠️  Adding {symbol} to local state from exchange: "
+                    f"{exchange_pos['size']:+.5f} @ ${exchange_pos['entry_price']:,.2f}"
+                )
+
+                # Create position data matching our internal structure
+                # Note: We don't have the original signal, so create minimal data
+                position_data = {
+                    "signal": None,  # Unknown - position predates this session
+                    "size": abs(exchange_pos['size']),  # Store as positive, track direction separately
+                    "entry_price": exchange_pos['entry_price'],
+                    "stop_loss": None,  # User set manually
+                    "take_profit": None,  # User set manually
+                    "timestamp": datetime.now(),  # Current time (actual entry time unknown)
+                    "synced_from_exchange": True,  # Flag to indicate this was synced
+                    "exchange_data": exchange_pos,  # Store full exchange data for reference
+                }
+
+                self.open_positions[symbol] = position_data
+                self.state_manager.save_position(symbol, position_data)
+
+                logger.info(
+                    f"✅ Synced {symbol}: size={exchange_pos['size']:+.5f}, "
+                    f"entry=${exchange_pos['entry_price']:,.2f}, "
+                    f"pnl=${exchange_pos['unrealized_pnl']:+.2f}"
+                )
+
+            # Compare sizes for positions that exist in both
+            common_symbols = local_symbols & exchange_symbols
+            for symbol in common_symbols:
+                local_size = self.open_positions[symbol].get('size', 0)
+                exchange_size = abs(exchange_pos_map[symbol]['size'])
+
+                if abs(local_size - exchange_size) > 0.0001:  # Allow for rounding
+                    logger.warning(
+                        f"⚠️  Size mismatch for {symbol}: "
+                        f"local={local_size:.5f}, exchange={exchange_size:.5f}"
+                    )
+                    logger.warning(f"   Updating local state to match exchange")
+
+                    # Update position size to match exchange
+                    self.open_positions[symbol]['size'] = exchange_size
+                    self.state_manager.save_position(symbol, self.open_positions[symbol])
+
+            # Summary
+            if exchange_positions:
+                logger.info(f"✅ Position sync complete: {len(exchange_pos_map)} positions tracked")
+            else:
+                logger.info("✅ Position sync complete: No open positions on exchange")
+
+        except Exception as e:
+            # Don't fail initialization if sync fails - log and continue
+            logger.error(f"Failed to sync positions with exchange: {e}", exc_info=True)
+            logger.warning("Continuing with local state (may be out of sync with exchange)")
