@@ -44,8 +44,8 @@ COPY . .
 RUN pip install -e .
 
 # Verify installation
-RUN python -c "import vectorbt; print(f'vectorbt {vectorbt.__version__}')" && \
-    python -c "from core.market_structure import find_swing_points; print('Core modules OK')"
+RUN python3 -c "import vectorbt; print(f'vectorbt {vectorbt.__version__}')" && \
+    python3 -c "from core.market_structure import find_swing_points; print('Core modules OK')"
 
 # Default command
 CMD ["bash"]

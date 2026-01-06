@@ -56,7 +56,7 @@ remote_exec() {
 case "${1:-help}" in
     status)
         echo -e "${BLUE}Checking bot status on $AWS_HOST...${NC}"
-        remote_exec "cd $PROJECT && docker exec -it fractal-trader-aws python -m live.cli status 2>/dev/null || echo 'Container not running'"
+        remote_exec "cd $PROJECT && docker exec -it fractal-trader-aws python3 -m live.cli status 2>/dev/null || echo 'Container not running'"
         ;;
 
     logs)
@@ -102,7 +102,7 @@ case "${1:-help}" in
 
     report)
         echo -e "${BLUE}Performance report from $AWS_HOST...${NC}"
-        remote_exec "cd $PROJECT && docker exec -it fractal-trader-aws python -m live.cli report 2>/dev/null || echo 'Container not running'"
+        remote_exec "cd $PROJECT && docker exec -it fractal-trader-aws python3 -m live.cli report 2>/dev/null || echo 'Container not running'"
         ;;
 
     resources)

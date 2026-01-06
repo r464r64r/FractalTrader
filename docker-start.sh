@@ -37,14 +37,14 @@ case "${1:-shell}" in
         docker run --rm \
             -v "$(pwd):/app" \
             $IMAGE_NAME \
-            python -m pytest tests/ -v --tb=short
+            python3 -m pytest tests/ -v --tb=short
         ;;
     backtest)
         echo -e "${GREEN}Running example backtest...${NC}"
         docker run --rm \
             -v "$(pwd):/app" \
             $IMAGE_NAME \
-            python -c "
+            python3 -c "
 from strategies.liquidity_sweep import LiquiditySweepStrategy
 from backtesting.runner import BacktestRunner
 import pandas as pd
