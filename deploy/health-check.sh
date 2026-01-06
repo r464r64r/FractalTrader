@@ -163,7 +163,7 @@ main() {
     # Get bot status
     echo ""
     echo "Bot Status:"
-    docker exec $CONTAINER_NAME python -m live.cli status 2>/dev/null || echo "Unable to retrieve bot status"
+    docker exec $CONTAINER_NAME python3 -m live.cli status 2>/dev/null || echo "Unable to retrieve bot status"
 
     echo "=========================================="
     if [ $has_issues -eq 0 ]; then

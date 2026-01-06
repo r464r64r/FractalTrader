@@ -264,7 +264,7 @@ echo -e "\n3. ${BLUE}View logs:${NC}"
 echo -e "   docker compose -f docker-compose.aws.yml logs -f"
 
 echo -e "\n4. ${BLUE}Check status:${NC}"
-echo -e "   docker exec -it fractal-trader-aws python -m live.cli status"
+echo -e "   docker exec -it fractal-trader-aws python3 -m live.cli status"
 
 echo -e "\n5. ${BLUE}Monitor resources:${NC}"
 echo -e "   docker stats fractal-trader-aws"

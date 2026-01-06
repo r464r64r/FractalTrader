@@ -10,6 +10,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: fractal-trader-dev
+    restart: unless-stopped
     volumes:
       - .:/app
       - fractal-cache:/root/.cache
@@ -22,7 +23,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
     stdin_open: true
     tty: true
-    command: bash
+    command: /app/bot-autostart.sh
 
   # MCP Server (for Claude Code integration)
   mcp-server:
@@ -36,7 +37,7 @@ services:
       - PYTHONUNBUFFERED=1
       - USE_DOCKER=true
       - DOCKER_CONTAINER_NAME=fractal-trader-dev
-    command: python -m fractal_mcp.server
+    command: python3 -m fractal_mcp.server
     profiles:
       - mcp  # Only runs with: docker compose --profile mcp up
 
@@ -48,7 +49,7 @@ services:
     container_name: fractal-test
     volumes:
       - .:/app:ro  # Read-only for safety
-    command: python -m pytest tests/ -v --tb=short
+    command: python3 -m pytest tests/ -v --tb=short
     profiles:
       - test  # Only runs with: docker compose --profile test up
 
