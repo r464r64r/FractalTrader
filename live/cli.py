@@ -21,6 +21,7 @@ from pathlib import Path
 
 from live.hl_integration.config import HyperliquidConfig
 from live.hl_integration.testnet import HyperliquidTestnetTrader
+from live.logging_config import setup_logging
 from live.reporting import PerformanceReporter
 from live.state_manager import StateManager
 from strategies.bos_orderblock import BOSOrderBlockStrategy
@@ -35,15 +36,6 @@ logger = logging.getLogger(__name__)
 # PID file for tracking running bot
 PID_FILE = Path(".trading_bot.pid")
 STATE_FILE = Path(".testnet_state.json")
-
-
-def setup_logging(level: str = "INFO") -> None:
-    """Setup logging configuration."""
-    logging.basicConfig(
-        level=getattr(logging, level.upper()),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
 
 
 def get_strategy(strategy_name: str):
@@ -90,8 +82,8 @@ def cmd_start(args: argparse.Namespace) -> int:
         print("Run 'live.cli stop' to stop it first, or remove PID file if it crashed.")
         return 1
 
-    # Setup logging
-    setup_logging(args.log_level)
+    # Setup logging (file + console)
+    setup_logging(log_level=args.log_level, log_file="/tmp/bot_v2.log", console=True)
 
     print("🚀 Starting paper trading bot...")
     print(f"Strategy: {args.strategy}")

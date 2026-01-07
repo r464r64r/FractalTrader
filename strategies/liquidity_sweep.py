@@ -7,11 +7,15 @@ then reverses sharply.
 """
 
 
+import logging
+
 import pandas as pd
 
 from core.liquidity import detect_liquidity_sweep, find_equal_levels
 from core.market_structure import determine_trend, find_swing_points
 from strategies.base import BaseStrategy, Signal
+
+logger = logging.getLogger(__name__)
 
 
 class LiquiditySweepStrategy(BaseStrategy):
@@ -57,6 +61,7 @@ class LiquiditySweepStrategy(BaseStrategy):
             List of Signal objects for valid setups
         """
         self.validate_data(data)
+        logger.debug(f"Analyzing {len(data)} candles for liquidity sweeps")
         signals: list[Signal] = []
 
         # 1. Find swing points
@@ -107,6 +112,21 @@ class LiquiditySweepStrategy(BaseStrategy):
 
         # 6. Filter by RR ratio
         signals = self.filter_signals_by_rr(signals, self.params["min_rr_ratio"])
+
+        if signals:
+            logger.info(
+                f"Found {len(signals)} liquidity sweep signal(s): "
+                f"{sum(1 for s in signals if s.direction == 1)} LONG, "
+                f"{sum(1 for s in signals if s.direction == -1)} SHORT"
+            )
+            for signal in signals:
+                logger.debug(
+                    f"  {signal.timestamp}: {'LONG' if signal.direction == 1 else 'SHORT'} "
+                    f"@ {signal.entry_price:.2f}, SL: {signal.stop_loss:.2f}, "
+                    f"TP: {signal.take_profit:.2f}"
+                )
+        else:
+            logger.debug("No liquidity sweep signals found")
 
         return signals
 

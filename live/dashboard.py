@@ -14,7 +14,8 @@ from pathlib import Path
 from flask import Flask, jsonify, render_template_string
 
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+
+# Logger configuration inherited from root logger (configured in cli.py)
 logger = logging.getLogger(__name__)
 
 STATE_FILE = Path("/app/.testnet_state.json")

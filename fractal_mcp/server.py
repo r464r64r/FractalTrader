@@ -19,9 +19,16 @@ from fractal_mcp.tools.signals import generate_signals
 from fractal_mcp.tools.test_runner import run_tests
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+try:
+    from live.logging_config import setup_logging
+
+    setup_logging(log_level="INFO", log_file="/tmp/mcp_server.log")
+except ImportError:
+    # Fallback if live module not available
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
 logger = logging.getLogger(__name__)
 
 

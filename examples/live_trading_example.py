@@ -1,15 +1,12 @@
 """Example: Live trading on Hyperliquid testnet."""
 
-import logging
-
 from live.hl_integration.config import HyperliquidConfig
 from live.hl_integration.testnet import HyperliquidTestnetTrader
+from live.logging_config import setup_logging
 from strategies.liquidity_sweep import LiquiditySweepStrategy
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+setup_logging(log_level="INFO", log_file="/tmp/example_trading.log")
 
 
 def main():
