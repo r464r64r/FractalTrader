@@ -1,6 +1,6 @@
 # FractalTrader — AI Context
 
-**Compact reference for AI assistants. Updated: 2026-01-05**
+**Compact reference for AI assistants. Updated: 2026-01-07**
 
 ---
 
@@ -40,18 +40,24 @@ sudo docker exec fractal-trader-dev grep "CRITICAL\|ERROR" /tmp/bot_v2.log
 ## 📚 Docs Quick Index (Where to Find What)
 
 ### Active/Critical (Check These First)
-- **`CURRENTRUN.md`** → Real-time bot status, monitoring commands, validation timeline
-- **`ISSUES.md`** → Project status, latest fixes, current sprint, what's next
-- **`DECISION_LOG_CIRCUIT_BREAKER_FIX.md`** → Jan 5 critical fixes (circuit breaker + state persistence)
-- **`DECISION_LOG_TESTNET_SIMULATION.md`** → Simulation mode design & rationale
+- **`docs/CURRENTRUN.md`** → Real-time bot status, monitoring commands, validation timeline
+- **`docs/ISSUES.md`** → Project status, latest fixes, current sprint, what's next
+- **`CHANGELOG.md`** → Version history, migration guides (keepachangelog.com format)
+- **`SECURITY.md`** → Security policy, vulnerability reporting, best practices
 
 ### Planning/Roadmap
-- **`ROADMAP_Q1_2025.md`** → 6-sprint plan (Jan-Mar 2025)
-- **`SPRINT_FRAMEWORK.md`** → Sprint methodology, how we work
+- **`docs/ROADMAP_Q1_2026.md`** → 6-sprint plan (Dec 2025 - Mar 2026)
+- **`docs/SPRINT_FRAMEWORK.md`** → Sprint methodology, how we work
+
+### Decision Records (ADRs)
+- **`docs/decisions/`** → Architecture decision records
+- **`docs/decisions/0001-*.md`** → Circuit breaker false triggers fix
+- **`docs/decisions/0004-*.md`** → Testnet simulation mode design
 
 ### Historical/Reference
-- **`sprints/*.md`** → Sprint 1-3 reports (completed)
-- **`archive/`** → Old docs, deprecated guides
+- **`docs/sprints/*.md`** → Sprint 1-4 reports (completed)
+- **`docs/archive/`** → Deprecated docs (Jan 2 cleanup)
+- **`docs/archive/legacy/`** → Pre-sprint era docs
 
 ### Deploy
 - **`deploy/AWS_*.md`** → AWS deployment guides (configured but not active)
@@ -59,11 +65,12 @@ sudo docker exec fractal-trader-dev grep "CRITICAL\|ERROR" /tmp/bot_v2.log
 ---
 
 ## Status
-- **Sprints 1-4:** ✅ COMPLETE
-- **Current:** 🟢 Testnet validation (PR #30, Jan 5-6)
-- **Sprint 5-6:** E2E Testing + 7-Day Validation (next)
-- **Production Readiness:** ~92%
-- **Test Coverage:** ~94% (350+ tests)
+- **Sprints 1-4:** ✅ COMPLETE (Sprint 4: Jan 2-6, 2026)
+- **Current:** Sprint 5 - E2E Testing + Monitoring (Feb 9-22, 2026)
+- **Next:** Sprint 6 - 7-Day Validation (Feb 23 - Mar 8, 2026)
+- **Production Readiness:** 92%
+- **Test Coverage:** 94% (350+ tests)
+- **Live Trading:** 🟢 Active on Hyperliquid testnet
 
 ---
 
@@ -145,19 +152,27 @@ sudo docker exec fractal-trader-dev rm -f .testnet_state.json .testnet_state.jso
 
 ---
 
-## Current Work (as of 2026-01-05)
+## Current Work (as of 2026-01-07)
 
-**Active:** Testnet validation (PR #30)
-- **Branch:** `fix/testnet-zero-balance-simulation`
-- **Status:** 🟢 Running (started Jan 5 00:20 UTC)
-- **Target:** 24h continuous operation → merge
-- **Monitoring:** See `docs/CURRENTRUN.md`
+**Sprint 4:** ✅ COMPLETE (Jan 2-6, 2026)
+- Testnet deployment successful
+- 7 critical bugs fixed (position sync, circuit breaker, state persistence, tick size)
+- 24h+ continuous operation achieved
+- See: `docs/sprints/sprint-4.md`
 
-**Recent Fixes:**
-- Circuit breaker false triggers (only count successful orders)
-- State persistence JSON errors (recursive serialization)
+**Sprint 5:** 🔄 CURRENT (Feb 9-22, 2026)
+- E2E integration tests (data → signal → execution)
+- Enhanced monitoring dashboard (Streamlit)
+- Portfolio-level risk controls
+- Signal statistics tracking
 
-**Next:** Sprint 5 (E2E tests + monitoring dashboard)
+**Recent Updates (Phase 1-2):**
+- Centralized logging system with file rotation
+- Standard project files (CHANGELOG.md, SECURITY.md, LICENSE)
+- Documentation reorganization (ADRs, Sprint 4 report)
+- All fixes merged to main
+
+**Next:** Sprint 6 - 7-Day Testnet Validation (Feb 23 - Mar 8, 2026)
 
 ---
 
