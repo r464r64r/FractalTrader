@@ -15,6 +15,7 @@ Usage:
 
 import argparse
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
@@ -103,8 +104,8 @@ def cmd_start(args: argparse.Namespace) -> int:
             config=config, strategy=strategy, state_file=str(STATE_FILE)
         )
 
-        # Write PID file
-        PID_FILE.write_text(str(id(trader)))
+        # Write PID file (actual process ID for signal handling)
+        PID_FILE.write_text(str(os.getpid()))
 
         # Setup signal handlers for graceful shutdown
         def signal_handler(signum, frame):
@@ -156,13 +157,38 @@ def cmd_stop(args: argparse.Namespace) -> int:
 
     print("🛑 Stopping bot...")
 
-    # Note: In a real implementation, we would send a signal to the process
-    # For now, we'll just remove the PID file and inform the user
-    PID_FILE.unlink()
+    try:
+        # Read PID and send SIGTERM for graceful shutdown
+        pid = int(PID_FILE.read_text().strip())
 
-    print("✅ Bot stop signal sent")
-    print("Note: Bot will stop after current iteration")
-    return 0
+        # Check if process exists
+        try:
+            os.kill(pid, 0)  # Check if process exists (signal 0)
+        except ProcessLookupError:
+            print(f"⚠️  Process {pid} not found (may have already stopped)")
+            PID_FILE.unlink(missing_ok=True)
+            return 0
+        except PermissionError:
+            print(f"⚠️  Cannot access process {pid} (permission denied)")
+            return 1
+
+        # Send SIGTERM for graceful shutdown
+        os.kill(pid, signal.SIGTERM)
+        print(f"✅ Stop signal (SIGTERM) sent to process {pid}")
+        print("Note: Bot will stop after current iteration completes")
+
+        # Clean up PID file
+        PID_FILE.unlink(missing_ok=True)
+        return 0
+
+    except ValueError:
+        print("❌ Invalid PID file contents")
+        PID_FILE.unlink(missing_ok=True)
+        return 1
+    except Exception as e:
+        logger.error(f"Failed to stop bot: {e}")
+        print(f"❌ Failed to stop bot: {e}")
+        return 1
 
 
 def cmd_status(args: argparse.Namespace) -> int:
