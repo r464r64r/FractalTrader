@@ -135,6 +135,7 @@ class HyperliquidTestnetTrader:
         self.max_daily_drawdown = 0.20  # Stop if down 20% (more lenient than mainnet)
         self.max_daily_trades = 50  # Limit number of trades per day
         self.circuit_breaker_triggered = False
+        self._circuit_breaker_date = datetime.now().date()  # Track daily reset
 
         # Sync positions with exchange on startup (critical for recovery)
         self._sync_positions_with_exchange()
@@ -195,6 +196,9 @@ class HyperliquidTestnetTrader:
             # Check circuit breakers first
             if not self._check_circuit_breakers():
                 return
+
+            # 0. Monitor and manage existing positions (SL/TP)
+            self._monitor_positions()
 
             # 1. Fetch latest data
             data = self.fetcher.fetch_ohlcv(
@@ -280,6 +284,143 @@ class HyperliquidTestnetTrader:
                 logger.error(f"Iteration error (unknown type): {e}", exc_info=True)
                 time.sleep(10)  # Longer pause for unknown errors
 
+    def _monitor_positions(self):
+        """
+        Monitor open positions and close them if SL/TP is hit.
+
+        This is critical for risk management - positions must be closed
+        when stop loss or take profit levels are reached.
+        """
+        if not self.open_positions:
+            return
+
+        for symbol, position in list(self.open_positions.items()):
+            try:
+                # Get current price
+                current_price = self.fetcher.get_current_price(symbol)
+                if current_price <= 0:
+                    logger.warning(f"Could not get price for {symbol}, skipping position check")
+                    continue
+
+                entry_price = position.get("entry_price", 0)
+                stop_loss = position.get("stop_loss")
+                take_profit = position.get("take_profit")
+                size = position.get("size", 0)
+
+                # Determine position direction (from signal or entry data)
+                signal = position.get("signal")
+                if signal and hasattr(signal, "direction"):
+                    is_long = signal.direction == 1
+                else:
+                    # Fallback: assume long if no signal data
+                    is_long = True
+
+                # Check stop loss
+                if stop_loss:
+                    sl_hit = (is_long and current_price <= stop_loss) or \
+                             (not is_long and current_price >= stop_loss)
+                    if sl_hit:
+                        logger.warning(
+                            f"🛑 STOP LOSS HIT for {symbol}! "
+                            f"Price: ${current_price:,.2f}, SL: ${stop_loss:,.2f}"
+                        )
+                        self._close_position(symbol, current_price, "STOP_LOSS")
+                        continue
+
+                # Check take profit
+                if take_profit:
+                    tp_hit = (is_long and current_price >= take_profit) or \
+                             (not is_long and current_price <= take_profit)
+                    if tp_hit:
+                        logger.info(
+                            f"🎯 TAKE PROFIT HIT for {symbol}! "
+                            f"Price: ${current_price:,.2f}, TP: ${take_profit:,.2f}"
+                        )
+                        self._close_position(symbol, current_price, "TAKE_PROFIT")
+                        continue
+
+                # Update unrealized P&L for simulation mode
+                if hasattr(self, "simulation_mode") and self.simulation_mode:
+                    if is_long:
+                        unrealized_pnl = (current_price - entry_price) * size
+                    else:
+                        unrealized_pnl = (entry_price - current_price) * size
+                    position["unrealized_pnl"] = unrealized_pnl
+
+            except Exception as e:
+                logger.error(f"Error monitoring position {symbol}: {e}")
+
+    def _close_position(self, symbol: str, exit_price: float, reason: str):
+        """
+        Close a position and record the trade.
+
+        Args:
+            symbol: Symbol to close
+            exit_price: Price at which position is closed
+            reason: Why position was closed (STOP_LOSS, TAKE_PROFIT, MANUAL)
+        """
+        if symbol not in self.open_positions:
+            logger.warning(f"Cannot close position {symbol}: not found")
+            return
+
+        position = self.open_positions[symbol]
+        entry_price = position.get("entry_price", 0)
+        size = position.get("size", 0)
+
+        # Determine direction
+        signal = position.get("signal")
+        if signal and hasattr(signal, "direction"):
+            is_long = signal.direction == 1
+        else:
+            is_long = True
+
+        # Calculate P&L
+        if is_long:
+            pnl = (exit_price - entry_price) * size
+        else:
+            pnl = (entry_price - exit_price) * size
+
+        logger.info(
+            f"📊 Closing {symbol}: "
+            f"{'LONG' if is_long else 'SHORT'} "
+            f"Entry: ${entry_price:,.2f}, Exit: ${exit_price:,.2f}, "
+            f"P&L: ${pnl:+,.2f} ({reason})"
+        )
+
+        # Place close order (unless in simulation mode)
+        if not (hasattr(self, "simulation_mode") and self.simulation_mode):
+            try:
+                # For long positions, we sell; for short, we buy
+                close_order = self.exchange.order(
+                    symbol,
+                    not is_long,  # Opposite direction to close
+                    size,
+                    self._round_to_tick_size(symbol, exit_price),
+                    {"limit": {"tif": "Gtc"}}
+                )
+                logger.info(f"Close order placed: {close_order}")
+            except Exception as e:
+                logger.error(f"Failed to place close order for {symbol}: {e}")
+
+        # Update trade in history
+        for trade in reversed(self.trade_history):
+            if trade.get("symbol") == symbol and trade.get("status") == "OPEN":
+                trade["exit_price"] = exit_price
+                trade["pnl"] = pnl
+                trade["status"] = "CLOSED"
+                trade["close_reason"] = reason
+                trade["close_timestamp"] = datetime.now()
+                break
+
+        # Remove from open positions
+        del self.open_positions[symbol]
+        self.state_manager.remove_position(symbol)
+
+        # Save updated state
+        self.state_manager.force_save()
+
+        logger.info(f"✅ Position {symbol} closed successfully")
+
     def _check_circuit_breakers(self) -> bool:
         """
         Check if circuit breakers should trigger.
@@ -287,7 +428,15 @@ class HyperliquidTestnetTrader:
         Returns:
             True if trading can continue, False if breakers triggered
         """
-        # Skip if already triggered
+        # Reset circuit breakers at midnight (new trading day)
+        today = datetime.now().date()
+        if today != self._circuit_breaker_date:
+            logger.info(f"📅 New trading day ({today}): Resetting circuit breakers")
+            self._circuit_breaker_date = today
+            self.circuit_breaker_triggered = False
+            # Note: We don't reset starting_balance - that's session-based
+
+        # Skip if already triggered today
         if self.circuit_breaker_triggered:
             return False
 
@@ -313,10 +462,11 @@ class HyperliquidTestnetTrader:
             self.stop()
             return False
 
-        # 2. Check trade count limit
-        if len(self.trade_history) > self.max_daily_trades:
+        # 2. Check trade count limit (TODAY only, not all history)
+        today_trades = self._count_today_trades()
+        if today_trades > self.max_daily_trades:
             logger.critical(
-                f"🛑 CIRCUIT BREAKER TRIGGERED! Trade count {len(self.trade_history)} > "
+                f"🛑 CIRCUIT BREAKER TRIGGERED! Today's trade count {today_trades} > "
                 f"{self.max_daily_trades}"
             )
             self.circuit_breaker_triggered = True
@@ -324,6 +474,65 @@ class HyperliquidTestnetTrader:
             return False
 
         return True
+
+    def _count_today_trades(self) -> int:
+        """Count trades executed today only."""
+        today = datetime.now().date()
+        count = 0
+        for trade in self.trade_history:
+            trade_time = trade.get("timestamp")
+            if trade_time:
+                # Handle both datetime and string timestamps
+                if isinstance(trade_time, str):
+                    try:
+                        trade_date = datetime.fromisoformat(trade_time).date()
+                    except ValueError:
+                        continue
+                elif hasattr(trade_time, 'date'):
+                    trade_date = trade_time.date()
+                else:
+                    continue
+
+                if trade_date == today:
+                    count += 1
+        return count
+
+    def _round_to_tick_size(self, symbol: str, price: float) -> float:
+        """
+        Round price to appropriate tick size for the asset.
+
+        Different assets have different price precision requirements on Hyperliquid.
+
+        Args:
+            symbol: Asset symbol (e.g., 'BTC', 'ETH', 'SOL')
+            price: Raw price to round
+
+        Returns:
+            Price rounded to valid tick size
+        """
+        # Tick sizes based on Hyperliquid requirements (as of 2026-01)
+        # See: https://hyperliquid.gitbook.io/hyperliquid-docs
+        tick_sizes = {
+            "BTC": 1,        # BTC: integer prices only
+            "ETH": 0.1,      # ETH: 0.1 precision
+            "SOL": 0.01,     # SOL: 0.01 precision
+            "AVAX": 0.01,
+            "DOGE": 0.00001,
+            "XRP": 0.0001,
+            "MATIC": 0.0001,
+            "LINK": 0.01,
+            "ARB": 0.0001,
+            "OP": 0.001,
+        }
+
+        tick_size = tick_sizes.get(symbol, 0.01)  # Default to 0.01
+
+        if tick_size >= 1:
+            return round(price)
+        else:
+            # Round to tick size precision
+            precision = len(str(tick_size).split('.')[-1])
+            return round(price, precision)
 
     @sleep_and_retry
     @limits(calls=5, period=1)  # Max 5 order placements per second
@@ -352,9 +561,8 @@ class HyperliquidTestnetTrader:
             else:
                 limit_price = current_price * (1 + offset)  # Sell higher
 
-            # Round price to appropriate precision
-            # BTC requires integer prices (no decimals) for tick size
-            limit_price = round(limit_price)
+            # Round price to appropriate precision based on asset
+            limit_price = self._round_to_tick_size(symbol, limit_price)
 
             # Round size to avoid float_to_wire rounding errors
             # Hyperliquid typically accepts up to 5 decimal places for size

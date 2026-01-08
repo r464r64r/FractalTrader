@@ -1,11 +1,13 @@
 """Hyperliquid mainnet live trading."""
 
 import logging
+from datetime import datetime
 
 from hyperliquid.utils import constants
 
 from live.hl_integration.config import HyperliquidConfig
 from live.hl_integration.testnet import HyperliquidTestnetTrader
+from live.state_manager import StateManager
 from strategies.base import BaseStrategy
 
 logger = logging.getLogger(__name__)
@@ -25,13 +27,20 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
     Inherits from TestnetTrader (same logic, different network).
     """
 
-    def __init__(self, config: HyperliquidConfig, strategy: BaseStrategy, confirm: bool = False):
+    def __init__(
+        self,
+        config: HyperliquidConfig,
+        strategy: BaseStrategy,
+        state_file: str = ".mainnet_state.json",
+        confirm: bool = False,
+    ):
         """
         Initialize mainnet trader.
 
         Args:
             config: HyperliquidConfig with network='mainnet'
             strategy: Strategy instance
+            state_file: Path to state file for persistence
             confirm: If True, skip interactive confirmation (for testing)
 
         Raises:
@@ -60,6 +69,7 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
 
         self.config = config
         self.strategy = strategy
+        self.simulation_mode = False  # Mainnet is never simulation
 
         # Setup wallet
         from eth_account import Account
@@ -88,51 +98,65 @@ class HyperliquidTrader(HyperliquidTestnetTrader):
             min_confidence=config.min_confidence,
         )
 
-        # State tracking
-        self.open_positions = {}  # symbol -> position info
-        self.trade_history = []
+        # Initialize state manager (CRITICAL for mainnet - must persist!)
+        self.state_manager = StateManager(state_file=state_file, auto_save=True, backup_count=10)
+
+        # Load state from previous session
+        self.open_positions: dict = self.state_manager.load_positions()
+        self.trade_history: list[dict] = self.state_manager.load_trade_history()
         self.is_running = False
 
-        # Mainnet-specific: Circuit breaker
-        self.max_daily_drawdown = 0.10  # Stop if down 10%
-        self.starting_balance = self._get_portfolio_value()
+        # Set starting balance
+        if self.state_manager.get_starting_balance() == 0:
+            portfolio_value = self._get_actual_portfolio_value()
+            self.state_manager.set_starting_balance(portfolio_value)
+            self.starting_balance = portfolio_value
+            logger.info(f"Set starting balance: ${portfolio_value:,.2f}")
+        else:
+            self.starting_balance = self.state_manager.get_starting_balance()
+            logger.info(f"Resumed session with starting balance: ${self.starting_balance:,.2f}")
+
+        # Mainnet-specific: Tighter circuit breakers
+        self.max_daily_drawdown = 0.10  # Stop if down 10% (stricter than testnet)
+        self.max_daily_trades = 20  # Fewer trades on mainnet
+        self.circuit_breaker_triggered = False
+        self._circuit_breaker_date = datetime.now().date()
+
+        # Sync positions with exchange
+        self._sync_positions_with_exchange()
 
         logger.info("HyperliquidTrader initialized (MAINNET)")
         logger.warning(f"Starting balance: ${self.starting_balance:,.2f}")
+        if self.open_positions:
+            logger.warning(f"Loaded {len(self.open_positions)} open positions from previous session")
 
     def _trading_iteration(self):
         """Single iteration of trading loop with mainnet safeguards."""
-        try:
-            # Check circuit breaker
-            current_balance = self._get_portfolio_value()
-            drawdown = (self.starting_balance - current_balance) / self.starting_balance
-
-            if drawdown > self.max_daily_drawdown:
-                logger.critical(
-                    f"CIRCUIT BREAKER TRIGGERED! Drawdown {drawdown:.2%} > "
-                    f"{self.max_daily_drawdown:.2%}"
-                )
-                self.stop()
-                return
-
-            # Call parent trading iteration
-            super()._trading_iteration()
-
-        except Exception as e:
-            logger.error(f"Mainnet iteration error: {e}", exc_info=True)
+        # Use parent class implementation - it has position monitoring,
+        # circuit breakers, and all safety features built in.
+        # The only difference is that mainnet has tighter limits (set in __init__).
+        super()._trading_iteration()
 
     def _print_summary(self):
         """Print trading session summary with mainnet warnings."""
+        # Force save state before printing summary
+        self.state_manager.force_save()
+
         current_balance = self._get_portfolio_value()
         pnl = current_balance - self.starting_balance
         pnl_pct = (pnl / self.starting_balance * 100) if self.starting_balance > 0 else 0
 
         logger.info("=" * 50)
-        logger.info("MAINNET TRADING SESSION SUMMARY")
+        logger.info("⚠️  MAINNET TRADING SESSION SUMMARY ⚠️")
         logger.info("=" * 50)
         logger.info(f"Starting balance: ${self.starting_balance:,.2f}")
         logger.info(f"Final balance: ${current_balance:,.2f}")
         logger.info(f"P&L: ${pnl:,.2f} ({pnl_pct:.2f}%)")
         logger.info(f"Total trades: {len(self.trade_history)}")
         logger.info(f"Open positions: {len(self.open_positions)}")
+        if self.open_positions:
+            logger.warning("⚠️  OPEN POSITIONS REMAIN - Manual intervention may be needed!")
+            for symbol, pos in self.open_positions.items():
+                logger.warning(f"   {symbol}: {pos.get('size', 0):.4f} @ ${pos.get('entry_price', 0):,.2f}")
         logger.info("=" * 50)
+        logger.info("State saved to disk")
