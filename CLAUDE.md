@@ -1,6 +1,6 @@
 # FractalTrader — AI Context
 
-**Compact reference for AI assistants. Updated: 2026-01-07**
+**Compact reference for AI assistants. Updated: 2026-01-10**
 
 ---
 
@@ -68,9 +68,9 @@ sudo docker exec fractal-trader-dev grep "CRITICAL\|ERROR" /tmp/bot_v2.log
 - **Sprints 1-4:** ✅ COMPLETE (Sprint 4: Jan 2-6, 2026)
 - **Current:** Sprint 5 - E2E Testing + Monitoring (Feb 9-22, 2026)
 - **Next:** Sprint 6 - 7-Day Validation (Feb 23 - Mar 8, 2026)
-- **Production Readiness:** 92%
-- **Test Coverage:** 94% (350+ tests)
-- **Live Trading:** 🟢 Active on Hyperliquid testnet
+- **Production Readiness:** 96% (verified on EC2, Jan 10)
+- **Test Coverage:** 94% (358+ tests)
+- **Live Trading:** 🟢 Active on Hyperliquid testnet (EC2 Tokyo, 4d 15h uptime)
 
 ---
 
