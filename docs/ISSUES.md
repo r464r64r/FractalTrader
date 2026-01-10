@@ -1,8 +1,38 @@
 # FractalTrader — Status & Next Steps
 
-**Updated:** 2026-01-05
+**Updated:** 2026-01-10
 
-## Latest Fixes (2026-01-05)
+## Latest Fixes (2026-01-10)
+
+Critical fix after 64.5hr EC2 testnet run:
+
+| Issue | Solution | Files Changed | Commit |
+|-------|----------|---------------|--------|
+| **Position close tracking bug** | Added `StateManager.update_trade_status()` | `testnet.py`, `state_manager.py`, `tests/test_state_manager.py` | `9cae209` |
+
+**Root Cause:**
+- `testnet.py` maintained local copy of `trade_history` (deepcopy from `state_manager`)
+- `_close_position()` updated local copy, but changes never persisted to disk
+- Result: All 52 trades from EC2 testnet marked as "OPEN" despite being closed
+
+**Impact:**
+- ✅ Trades now properly marked as CLOSED when positions exit
+- ✅ Exit price, P&L, and close timestamp now recorded
+- ✅ Enables accurate performance analysis (win rate, Sharpe ratio, etc.)
+- ✅ Added 5 comprehensive tests for position lifecycle
+
+**EC2 Testnet Results (Jan 6-9):**
+- Runtime: 64.5 hours continuous (ZERO crashes) ✅
+- Trades: 52 executed (all SHORT positions)
+- Circuit breaker: Triggered correctly at 51 trades
+- Data pipeline: 3,898/3,898 fetches successful (100%)
+- Production readiness: 92% → 95%
+
+See: `/Downloads/fractal_export/READ_ME_FIRST.txt` for full analysis.
+
+---
+
+## Previous Fixes (2026-01-05)
 
 Critical fixes applied during testnet validation:
 
@@ -36,11 +66,12 @@ All critical issues from Sprint 4 have been resolved:
 
 | Metric | Value |
 |--------|-------|
-| Production Readiness | ~92% |
+| Production Readiness | **~95%** ⬆️ |
 | Test Coverage | ~94% |
-| Total Tests | 350+ |
+| Total Tests | 355+ |
 | Critical Failure Points | 0 |
 | Sprints Complete | 4/6 |
+| Longest Stable Run | 64.5 hours (EC2) |
 
 ## Current: Testnet Validation
 
