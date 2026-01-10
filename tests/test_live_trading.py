@@ -330,3 +330,127 @@ class TestLiveTradeIntegration:
         assert hasattr(HyperliquidTrader, "stop")
         assert hasattr(HyperliquidTrader, "_trading_iteration")
         assert hasattr(HyperliquidTrader, "_place_order")
+
+
+class TestSignalSelection:
+    """Tests for signal selection logic."""
+
+    def test_selects_highest_confidence_signal(self):
+        """Test that bot selects signal with highest confidence."""
+        from datetime import datetime
+        from strategies.base import Signal
+
+        # Create mock signals with different confidence scores
+        signals = [
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 0),
+                direction=1,  # LONG
+                entry_price=90000,
+                stop_loss=89000,
+                take_profit=92000,
+                confidence=70,
+                strategy_name="test",
+            ),
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 1),
+                direction=-1,  # SHORT
+                entry_price=90000,
+                stop_loss=91000,
+                take_profit=88000,
+                confidence=85,  # Highest
+                strategy_name="test",
+            ),
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 2),
+                direction=1,  # LONG
+                entry_price=90000,
+                stop_loss=89000,
+                take_profit=92000,
+                confidence=60,
+                strategy_name="test",
+            ),
+        ]
+
+        # Sort by confidence (as done in testnet.py)
+        signals.sort(key=lambda s: (s.confidence, s.timestamp), reverse=True)
+        best_signal = signals[0]
+
+        # Should select the SHORT signal with confidence=85
+        assert best_signal.direction == -1
+        assert best_signal.confidence == 85
+
+    def test_uses_timestamp_as_tiebreaker(self):
+        """Test that newest signal is selected when confidence is equal."""
+        from datetime import datetime
+        from strategies.base import Signal
+
+        signals = [
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 0),
+                direction=1,
+                entry_price=90000,
+                stop_loss=89000,
+                take_profit=92000,
+                confidence=75,
+                strategy_name="test",
+            ),
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 2),  # Newest
+                direction=-1,
+                entry_price=90000,
+                stop_loss=91000,
+                take_profit=88000,
+                confidence=75,  # Same confidence
+                strategy_name="test",
+            ),
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 1),
+                direction=1,
+                entry_price=90000,
+                stop_loss=89000,
+                take_profit=92000,
+                confidence=75,
+                strategy_name="test",
+            ),
+        ]
+
+        # Sort by confidence, then timestamp
+        signals.sort(key=lambda s: (s.confidence, s.timestamp), reverse=True)
+        best_signal = signals[0]
+
+        # Should select the newest (10:02) when confidence is equal
+        assert best_signal.timestamp == datetime(2026, 1, 10, 10, 2)
+        assert best_signal.direction == -1
+
+    def test_prefers_long_with_higher_confidence(self):
+        """Test that LONG signal is selected if it has higher confidence than SHORT."""
+        from datetime import datetime
+        from strategies.base import Signal
+
+        signals = [
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 0),
+                direction=1,  # LONG
+                entry_price=90000,
+                stop_loss=89000,
+                take_profit=92000,
+                confidence=90,  # Highest
+                strategy_name="test",
+            ),
+            Signal(
+                timestamp=datetime(2026, 1, 10, 10, 1),
+                direction=-1,  # SHORT
+                entry_price=90000,
+                stop_loss=91000,
+                take_profit=88000,
+                confidence=75,
+                strategy_name="test",
+            ),
+        ]
+
+        signals.sort(key=lambda s: (s.confidence, s.timestamp), reverse=True)
+        best_signal = signals[0]
+
+        # Should select LONG with higher confidence
+        assert best_signal.direction == 1
+        assert best_signal.confidence == 90

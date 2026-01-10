@@ -214,18 +214,27 @@ class HyperliquidTestnetTrader:
                 logger.debug("No signals generated")
                 return
 
-            # 3. Process latest signal
-            latest_signal = signals[-1]
+            # 3. Select best signal (highest confidence, then newest)
+            signals.sort(key=lambda s: (s.confidence, s.timestamp), reverse=True)
+            best_signal = signals[0]
+
+            logger.info(
+                f"Selected best signal: "
+                f"{'LONG' if best_signal.direction == 1 else 'SHORT'} "
+                f"confidence={best_signal.confidence} "
+                f"({len([s for s in signals if s.direction == 1])} LONG, "
+                f"{len([s for s in signals if s.direction == -1])} SHORT available)"
+            )
 
             # Check minimum confidence
-            if latest_signal.confidence < self.config.min_confidence:
+            if best_signal.confidence < self.config.min_confidence:
                 logger.info(
-                    f"Signal confidence {latest_signal.confidence} < "
+                    f"Signal confidence {best_signal.confidence} < "
                     f"min_confidence {self.config.min_confidence}, skipping"
                 )
                 return
 
-            logger.info(f"Signal: {latest_signal.direction} @ " f"{latest_signal.entry_price:.2f}")
+            logger.info(f"Signal: {best_signal.direction} @ " f"{best_signal.entry_price:.2f}")
 
             # 4. Check if we can open position
             # First check if position already exists for this symbol
@@ -242,9 +251,9 @@ class HyperliquidTestnetTrader:
             portfolio_value = self._get_portfolio_value()
             position_size = calculate_position_size(
                 portfolio_value=portfolio_value,
-                entry_price=latest_signal.entry_price,
-                stop_loss_price=latest_signal.stop_loss,
-                confidence_score=latest_signal.confidence,
+                entry_price=best_signal.entry_price,
+                stop_loss_price=best_signal.stop_loss,
+                confidence_score=best_signal.confidence,
                 current_atr=self._calculate_atr(data),
                 baseline_atr=self._calculate_baseline_atr(data),
                 consecutive_wins=self._count_consecutive_wins(),
@@ -257,7 +266,7 @@ class HyperliquidTestnetTrader:
                 return
 
             # 6. Place order
-            self._place_order(latest_signal, position_size)
+            self._place_order(best_signal, position_size)
 
         except TransientError as e:
             # Transient errors: network issues, API timeouts
