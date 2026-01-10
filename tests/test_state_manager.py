@@ -422,3 +422,164 @@ class TestStateManager:
         positions = manager3.load_positions()
         assert "BTC" in positions
         assert "ETH" in positions
+
+
+class TestTradeStatusUpdate:
+    """Tests for trade status update functionality."""
+
+    @pytest.fixture
+    def temp_state_file(self):
+        """Create temporary state file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            temp_path = f.name
+
+        yield temp_path
+
+        # Cleanup
+        Path(temp_path).unlink(missing_ok=True)
+        # Also cleanup backup files
+        for backup in Path(temp_path).parent.glob(f"{Path(temp_path).stem}*.bak*"):
+            backup.unlink(missing_ok=True)
+
+    @pytest.fixture
+    def manager_with_trades(self, temp_state_file):
+        """Create manager with sample trades."""
+        manager = StateManager(state_file=temp_state_file, auto_save=True)
+
+        # Add some trades
+        manager.save_trade({
+            "symbol": "BTC",
+            "timestamp": datetime.now().isoformat(),
+            "direction": "LONG",
+            "entry_price": 90000,
+            "size": 0.1,
+            "status": "OPEN"
+        })
+        manager.save_trade({
+            "symbol": "ETH",
+            "timestamp": datetime.now().isoformat(),
+            "direction": "SHORT",
+            "entry_price": 3000,
+            "size": 1.0,
+            "status": "OPEN"
+        })
+        manager.save_trade({
+            "symbol": "BTC",
+            "timestamp": datetime.now().isoformat(),
+            "direction": "SHORT",
+            "entry_price": 91000,
+            "size": 0.2,
+            "status": "CLOSED",
+            "exit_price": 90500,
+            "pnl": 100
+        })
+
+        return manager
+
+    def test_update_trade_status_success(self, manager_with_trades):
+        """Test updating trade status successfully."""
+        result = manager_with_trades.update_trade_status(
+            "BTC",
+            status="CLOSED",
+            exit_price=92000,
+            pnl=200,
+            close_reason="TAKE_PROFIT"
+        )
+
+        assert result is True
+
+        # Verify update persisted
+        trades = manager_with_trades.load_trade_history()
+        btc_open_trades = [t for t in trades if t["symbol"] == "BTC" and t.get("status") == "OPEN"]
+        assert len(btc_open_trades) == 0  # Should be closed now
+
+        btc_closed = [t for t in trades if t["symbol"] == "BTC" and t.get("status") == "CLOSED"]
+        assert len(btc_closed) == 2  # Original closed + newly closed
+
+        # Check the updated trade (first OPEN BTC trade, entry=90000)
+        updated_trade = [t for t in btc_closed if t["entry_price"] == 90000][0]
+        assert updated_trade["exit_price"] == 92000
+        assert updated_trade["pnl"] == 200
+        assert updated_trade["close_reason"] == "TAKE_PROFIT"
+
+    def test_update_trade_status_no_open_trade(self, manager_with_trades):
+        """Test updating when no OPEN trade exists."""
+        result = manager_with_trades.update_trade_status(
+            "SOL",  # Symbol not in trades
+            status="CLOSED",
+            exit_price=100
+        )
+
+        assert result is False
+
+    def test_update_trade_status_updates_most_recent(self, manager_with_trades):
+        """Test that update affects most recent OPEN trade."""
+        # Add another OPEN BTC trade
+        manager_with_trades.save_trade({
+            "symbol": "BTC",
+            "timestamp": datetime.now().isoformat(),
+            "direction": "LONG",
+            "entry_price": 92000,
+            "size": 0.15,
+            "status": "OPEN"
+        })
+
+        # Update should affect the most recent one
+        manager_with_trades.update_trade_status(
+            "BTC",
+            status="CLOSED",
+            exit_price=93000,
+            pnl=150
+        )
+
+        trades = manager_with_trades.load_trade_history()
+        btc_trades = [t for t in trades if t["symbol"] == "BTC"]
+
+        # First OPEN BTC trade should still be closed (from test data)
+        # Second OPEN BTC trade (entry 90000) should still be OPEN
+        # Third OPEN BTC trade (entry 92000) should be CLOSED
+        open_btc = [t for t in btc_trades if t.get("status") == "OPEN"]
+        assert len(open_btc) == 1
+        assert open_btc[0]["entry_price"] == 90000
+
+    def test_update_trade_status_datetime_serialization(self, manager_with_trades):
+        """Test that datetime objects are properly serialized."""
+        close_time = datetime.now()
+
+        result = manager_with_trades.update_trade_status(
+            "ETH",
+            status="CLOSED",
+            close_timestamp=close_time
+        )
+
+        assert result is True
+
+        # Verify datetime was serialized to ISO string
+        trades = manager_with_trades.load_trade_history()
+        eth_closed = [t for t in trades if t["symbol"] == "ETH" and t.get("status") == "CLOSED"]
+        assert len(eth_closed) == 1
+
+        # Should be string, not datetime object
+        assert isinstance(eth_closed[0]["close_timestamp"], str)
+        assert "T" in eth_closed[0]["close_timestamp"]  # ISO format contains 'T'
+
+    def test_update_trade_status_auto_save(self, temp_state_file):
+        """Test that update triggers auto-save."""
+        manager = StateManager(state_file=temp_state_file, auto_save=True)
+        manager.save_trade({
+            "symbol": "BTC",
+            "timestamp": datetime.now().isoformat(),
+            "status": "OPEN",
+            "entry_price": 90000
+        })
+
+        # Update trade
+        manager.update_trade_status("BTC", status="CLOSED", exit_price=91000)
+
+        # Load from disk with new manager to verify persistence
+        manager2 = StateManager(state_file=temp_state_file)
+        trades = manager2.load_trade_history()
+
+        assert len(trades) == 1
+        assert trades[0]["status"] == "CLOSED"
+        assert trades[0]["exit_price"] == 91000

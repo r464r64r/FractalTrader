@@ -402,22 +402,19 @@ class HyperliquidTestnetTrader:
             except Exception as e:
                 logger.error(f"Failed to place close order for {symbol}: {e}")
 
-        # Update trade in history
-        for trade in reversed(self.trade_history):
-            if trade.get("symbol") == symbol and trade.get("status") == "OPEN":
-                trade["exit_price"] = exit_price
-                trade["pnl"] = pnl
-                trade["status"] = "CLOSED"
-                trade["close_reason"] = reason
-                trade["close_timestamp"] = datetime.now()
-                break
+        # Update trade in state manager
+        self.state_manager.update_trade_status(
+            symbol,
+            exit_price=exit_price,
+            pnl=pnl,
+            status="CLOSED",
+            close_reason=reason,
+            close_timestamp=datetime.now().isoformat()
+        )
 
         # Remove from open positions
         del self.open_positions[symbol]
         self.state_manager.remove_position(symbol)
-
-        # Save updated state
-        self.state_manager.force_save()
 
         logger.info(f"✅ Position {symbol} closed successfully")
 

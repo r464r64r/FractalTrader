@@ -155,6 +155,36 @@ class StateManager:
         """
         return deepcopy(self.state.trade_history)
 
+    def update_trade_status(self, symbol: str, **updates) -> bool:
+        """
+        Update the most recent OPEN trade for a symbol.
+
+        Args:
+            symbol: Symbol to update
+            **updates: Fields to update (e.g., status="CLOSED", exit_price=90000)
+
+        Returns:
+            True if trade was found and updated, False otherwise
+        """
+        for trade in reversed(self.state.trade_history):
+            if trade.get("symbol") == symbol and trade.get("status") == "OPEN":
+                # Serialize datetime objects if present
+                for key, value in updates.items():
+                    if isinstance(value, datetime):
+                        updates[key] = value.isoformat()
+
+                trade.update(updates)
+                self.state.last_updated = datetime.now().isoformat()
+
+                if self.auto_save:
+                    self._save_state()
+
+                logger.info(f"Updated trade {symbol}: {updates}")
+                return True
+
+        logger.warning(f"No OPEN trade found for {symbol}")
+        return False
+
     def set_starting_balance(self, balance: float) -> None:
         """
         Set starting balance for the session.
